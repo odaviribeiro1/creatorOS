@@ -112,9 +112,9 @@ serve(async (req: Request) => {
 
         await supabase.from('processing_jobs').update({ progress: 10 }).eq('id', job.id)
 
-        // Use Apify Instagram Post Scraper with direct URLs
+        // Use Apify Instagram Reel Scraper with directUrls
         const startResponse = await fetchWithRetry(
-          `https://api.apify.com/v2/acts/apify~instagram-post-scraper/runs?token=${apifyToken}`,
+          `https://api.apify.com/v2/acts/apify~instagram-reel-scraper/runs?token=${apifyToken}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
