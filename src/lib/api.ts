@@ -79,6 +79,111 @@ export async function generateVoiceProfile(
   return data as { job_id: string };
 }
 
+export async function saveScriptEdit(
+  scriptId: string,
+  teleprompterText: string
+): Promise<void> {
+  // Get current max version number
+  const { data: versions } = await supabase
+    .from('script_versions')
+    .select('version_number')
+    .eq('script_id', scriptId)
+    .order('version_number', { ascending: false })
+    .limit(1)
+
+  const maxVersion = (versions && versions.length > 0)
+    ? (versions[0] as { version_number: number }).version_number
+    : 0
+
+  // Get current script data for snapshot
+  const { data: script, error: fetchError } = await supabase
+    .from('scripts')
+    .select('script_teleprompter, script_annotated, editing_report')
+    .eq('id', scriptId)
+    .single()
+
+  if (fetchError || !script) throw new Error('Failed to fetch current script')
+
+  // Create new version with the new content
+  const { error: versionError } = await supabase.from('script_versions').insert({
+    script_id: scriptId,
+    version_number: maxVersion + 1,
+    script_teleprompter: teleprompterText,
+    script_annotated: (script as Record<string, unknown>).script_annotated ?? {},
+    editing_report: (script as Record<string, unknown>).editing_report ?? {},
+    change_type: 'manual_edit',
+    change_description: 'Edição manual do roteiro',
+  })
+
+  if (versionError) throw new Error(`Failed to create version: ${versionError.message}`)
+
+  // Update the script
+  const { error: updateError } = await supabase
+    .from('scripts')
+    .update({
+      script_teleprompter: teleprompterText,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', scriptId)
+
+  if (updateError) throw new Error(`Failed to update script: ${updateError.message}`)
+}
+
+export async function restoreScriptVersion(
+  scriptId: string,
+  versionId: string
+): Promise<void> {
+  // Fetch the version to restore
+  const { data: version, error: versionError } = await supabase
+    .from('script_versions')
+    .select('*')
+    .eq('id', versionId)
+    .single()
+
+  if (versionError || !version) throw new Error('Version not found')
+
+  const v = version as {
+    version_number: number
+    script_teleprompter: string
+    script_annotated: Record<string, unknown>
+    editing_report: Record<string, unknown>
+  }
+
+  // Get max version number
+  const { data: versions } = await supabase
+    .from('script_versions')
+    .select('version_number')
+    .eq('script_id', scriptId)
+    .order('version_number', { ascending: false })
+    .limit(1)
+
+  const maxVersion = (versions && versions.length > 0)
+    ? (versions[0] as { version_number: number }).version_number
+    : 0
+
+  // Create new version as restoration
+  await supabase.from('script_versions').insert({
+    script_id: scriptId,
+    version_number: maxVersion + 1,
+    script_teleprompter: v.script_teleprompter,
+    script_annotated: v.script_annotated,
+    editing_report: v.editing_report,
+    change_type: 'manual_edit',
+    change_description: `Restaurado da versão ${v.version_number}`,
+  })
+
+  // Update script with restored content
+  await supabase
+    .from('scripts')
+    .update({
+      script_teleprompter: v.script_teleprompter,
+      script_annotated: v.script_annotated,
+      editing_report: v.editing_report,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', scriptId)
+}
+
 export async function generateScript(params: {
   topic: string;
   voice_profile_id?: string;

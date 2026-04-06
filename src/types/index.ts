@@ -152,6 +152,13 @@ export type TextOverlay = {
   position: string;
 };
 
+export type VisualEffect = {
+  start_ts: number;
+  end_ts: number;
+  type: string;
+  description: string;
+};
+
 export type ViralPatterns = {
   hook_type?: string;
   pacing?: string;
@@ -171,7 +178,9 @@ export type ContentAnalysis = {
   sound_effects: SoundEffect[];
   broll_segments: BRollSegment[];
   text_overlays: TextOverlay[];
+  visual_effects: VisualEffect[];
   viral_patterns: ViralPatterns;
+  editing_analysis_status: 'pending' | 'processing' | 'completed' | 'failed';
   gemini_model: string | null;
   claude_model: string | null;
   analyzed_at: string;
@@ -216,6 +225,20 @@ export type Script = {
   status: 'draft' | 'approved' | 'recorded' | 'published';
   created_at: string;
   updated_at: string;
+};
+
+// --- Script Versions ---
+
+export type ScriptVersion = {
+  id: string;
+  script_id: string;
+  version_number: number;
+  script_teleprompter: string;
+  script_annotated: Record<string, unknown>;
+  editing_report: Record<string, unknown>;
+  change_type: 'initial' | 'manual_edit' | 'ai_regeneration';
+  change_description: string | null;
+  created_at: string;
 };
 
 // --- Processing Jobs ---

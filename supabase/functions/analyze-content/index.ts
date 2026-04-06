@@ -16,6 +16,15 @@ interface AnalyzeRequest {
   model_id: string
 }
 
+interface EditingElements {
+  transitions: unknown[]
+  music_segments: unknown[]
+  sound_effects: unknown[]
+  broll_segments: unknown[]
+  text_overlays: unknown[]
+  visual_effects: unknown[]
+}
+
 function log(level: string, message: string, data?: Record<string, unknown>) {
   console.log(JSON.stringify({ level, message, timestamp: new Date().toISOString(), ...data }))
 }
@@ -158,38 +167,149 @@ async function uploadToGeminiFiles(
   }
 }
 
+const GEMINI_VIDEO_PROMPT = `Você é um editor de vídeo profissional analisando um Reel do Instagram. Analise CADA SEGUNDO deste vídeo com atenção máxima.
+
+IMPORTANTE: Mesmo vídeos simples de "talking head" possuem elementos de edição. Considere:
+- Jump cuts entre frases = transição do tipo "jump_cut"
+- Zoom in/out durante a fala = transição do tipo "zoom"
+- Qualquer mudança de enquadramento = transição
+- Música de fundo (mesmo baixa) = segmento de música
+- Legendas/texto aparecendo na tela = text overlay
+- Mudança de cenário ou ângulo = b-roll ou corte
+- Sons de "whoosh", "pop", "ding" = efeitos sonoros
+- Silêncios estratégicos = devem ser registrados
+
+Retorne APENAS um JSON válido (sem markdown, sem backticks, sem explicação) com esta estrutura exata:
+
+{
+  "transitions": [
+    {
+      "timestamp": 3,
+      "type": "jump_cut|fade|zoom_in|zoom_out|swipe|match_cut|speed_ramp|whip_pan|hard_cut",
+      "description": "Descrição curta do que acontece visualmente"
+    }
+  ],
+  "music_segments": [
+    {
+      "start_ts": 0,
+      "end_ts": 45,
+      "mood": "energético|calmo|tenso|inspirador|dramático",
+      "energy_level": "baixo|médio|alto",
+      "genre": "lo-fi|trap|pop|eletrônica|acústico|sem música",
+      "description": "Descrição da música/som de fundo"
+    }
+  ],
+  "sound_effects": [
+    {
+      "timestamp": 5,
+      "type": "whoosh|ding|pop|click|boom|notification|riser|drop",
+      "description": "Descrição do efeito e contexto de uso"
+    }
+  ],
+  "broll_segments": [
+    {
+      "start_ts": 8,
+      "end_ts": 11,
+      "description": "O que aparece no b-roll",
+      "visual_type": "screencast|footage|gráfico|imagem_estática|animação"
+    }
+  ],
+  "text_overlays": [
+    {
+      "start_ts": 0,
+      "end_ts": 3,
+      "text": "Texto exato que aparece na tela",
+      "style": "bold_grande|subtítulo|legenda_animada|bullet_point|número|emoji",
+      "position": "topo|centro|base|lateral"
+    }
+  ],
+  "visual_effects": [
+    {
+      "start_ts": 0,
+      "end_ts": 2,
+      "type": "zoom_dinâmico|shake|slow_motion|speed_ramp|filtro_cor|blur|split_screen",
+      "description": "Descrição do efeito"
+    }
+  ]
+}
+
+TODOS os timestamps devem ser números em segundos (não strings).
+Se alguma categoria não tiver elementos, retorne array vazio []. Mas ANALISE COM CUIDADO — a maioria dos Reels tem pelo menos transições (jump cuts) e texto na tela (legendas).`
+
+function parseGeminiResponse(responseText: string): EditingElements {
+  // Remove markdown code fences
+  let cleaned = responseText
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim()
+
+  // Try to extract JSON object from response
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+  if (jsonMatch) {
+    cleaned = jsonMatch[0]
+  }
+
+  // Remove trailing commas before } or ]
+  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1')
+
+  try {
+    const parsed = JSON.parse(cleaned)
+
+    return {
+      transitions: Array.isArray(parsed.transitions) ? parsed.transitions : [],
+      music_segments: Array.isArray(parsed.music_segments) ? parsed.music_segments : [],
+      sound_effects: Array.isArray(parsed.sound_effects) ? parsed.sound_effects : [],
+      broll_segments: Array.isArray(parsed.broll_segments) ? parsed.broll_segments : [],
+      text_overlays: Array.isArray(parsed.text_overlays) ? parsed.text_overlays : [],
+      visual_effects: Array.isArray(parsed.visual_effects) ? parsed.visual_effects : [],
+    }
+  } catch (e) {
+    log('error', 'Failed to parse Gemini response', {
+      error: String(e),
+      raw: responseText.slice(0, 1000),
+    })
+    return {
+      transitions: [],
+      music_segments: [],
+      sound_effects: [],
+      broll_segments: [],
+      text_overlays: [],
+      visual_effects: [],
+    }
+  }
+}
+
 async function analyzeVideoWithGemini(
   videoUrl: string,
   geminiKey: string
-): Promise<Record<string, unknown>> {
-  const prompt = `Analise este vídeo do Instagram Reels e retorne um JSON com:
-1. transitions: [{timestamp, type, description}]
-2. broll_segments: [{start_ts, end_ts, description, visual_type}]
-3. text_overlays: [{start_ts, end_ts, text, style, position}]
-4. sound_effects: [{timestamp, type, description}]
-5. music_segments: [{start_ts, end_ts, mood, energy_level, genre}]
-Timestamps em segundos. Retorne APENAS JSON válido.`
-
+): Promise<EditingElements> {
   // Try Files API first (faster for large videos)
   const fileUri = await uploadToGeminiFiles(videoUrl, geminiKey)
 
   let contentParts
   if (fileUri) {
-    contentParts = [{ fileData: { mimeType: 'video/mp4', fileUri } }, { text: prompt }]
+    contentParts = [{ fileData: { mimeType: 'video/mp4', fileUri } }, { text: GEMINI_VIDEO_PROMPT }]
   } else {
     // Fallback: skip video analysis, return empty
     log('info', 'Skipping Gemini visual analysis (no file URI)')
-    return {}
+    return {
+      transitions: [],
+      music_segments: [],
+      sound_effects: [],
+      broll_segments: [],
+      text_overlays: [],
+      visual_effects: [],
+    }
   }
 
   const response = await fetchWithRetry(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: contentParts }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
+        generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
       }),
     }
   )
@@ -197,19 +317,20 @@ Timestamps em segundos. Retorne APENAS JSON válido.`
   if (!response.ok) {
     const errText = await response.text()
     log('warn', `Gemini API failed (${response.status}): ${errText.slice(0, 300)}`)
-    return {}
+    return {
+      transitions: [],
+      music_segments: [],
+      sound_effects: [],
+      broll_segments: [],
+      text_overlays: [],
+      visual_effects: [],
+    }
   }
 
   const result = await response.json()
   const textContent = result.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
 
-  try {
-    const jsonMatch = textContent.match(/\{[\s\S]*\}/)
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : {}
-  } catch {
-    log('warn', 'Failed to parse Gemini response', { text: textContent.slice(0, 500) })
-    return {}
-  }
+  return parseGeminiResponse(textContent)
 }
 
 const STRUCTURE_PROMPT = `Analise esta transcrição de um Instagram Reel e a análise visual, e identifique a estrutura narrativa.
@@ -232,7 +353,7 @@ Retorne APENAS o JSON.`
 
 async function analyzeStructureWithOpenAI(
   transcription: string,
-  visualAnalysis: Record<string, unknown>,
+  visualAnalysis: EditingElements,
   openaiKey: string,
   modelId: string
 ): Promise<Record<string, unknown>> {
@@ -270,7 +391,7 @@ async function analyzeStructureWithOpenAI(
 
 async function analyzeStructureWithGemini(
   transcription: string,
-  visualAnalysis: Record<string, unknown>,
+  visualAnalysis: EditingElements,
   geminiKey: string,
   modelId: string
 ): Promise<Record<string, unknown>> {
@@ -332,6 +453,15 @@ async function analyzeOneReel(
     return
   }
 
+  // Mark editing analysis as processing
+  await supabase.from('content_analyses').upsert({
+    reel_id: reelId,
+    hook: { text: '', start_ts: 0, end_ts: 0, type: 'pending', effectiveness_score: 0 },
+    development: { text: '', start_ts: 0, end_ts: 0, key_points: [], storytelling_technique: 'pending' },
+    cta: { text: '', start_ts: 0, end_ts: 0, type: 'pending', strength_score: 0 },
+    editing_analysis_status: 'processing',
+  }, { onConflict: 'reel_id' })
+
   // 1. Transcribe with Whisper
   log('info', 'Starting Whisper transcription', { reelId })
   const whisperResult = await transcribeWithWhisper(videoUrl, openaiKey)
@@ -350,7 +480,35 @@ async function analyzeOneReel(
 
   // 2. Analyze video visually with Gemini
   log('info', 'Starting Gemini video analysis', { reelId })
-  const visualAnalysis = await analyzeVideoWithGemini(videoUrl, geminiKey)
+  let visualAnalysis: EditingElements
+  let editingStatus: 'completed' | 'failed' = 'completed'
+
+  try {
+    visualAnalysis = await analyzeVideoWithGemini(videoUrl, geminiKey)
+
+    // Check if we got any meaningful data
+    const hasData = visualAnalysis.transitions.length > 0 ||
+      visualAnalysis.music_segments.length > 0 ||
+      visualAnalysis.sound_effects.length > 0 ||
+      visualAnalysis.broll_segments.length > 0 ||
+      visualAnalysis.text_overlays.length > 0 ||
+      visualAnalysis.visual_effects.length > 0
+
+    if (!hasData) {
+      log('warn', 'Gemini returned no editing elements', { reelId })
+    }
+  } catch (err) {
+    log('warn', `Gemini visual analysis failed: ${err}`, { reelId })
+    editingStatus = 'failed'
+    visualAnalysis = {
+      transitions: [],
+      music_segments: [],
+      sound_effects: [],
+      broll_segments: [],
+      text_overlays: [],
+      visual_effects: [],
+    }
+  }
 
   // 3. Analyze structure with selected model
   log('info', `Starting structure analysis with ${modelProvider}/${modelId}`, { reelId })
@@ -372,13 +530,15 @@ async function analyzeOneReel(
     hook: structureAnalysis.hook ?? { text: '', start_ts: 0, end_ts: 3, type: 'unknown', effectiveness_score: 5 },
     development: structureAnalysis.development ?? { text: '', start_ts: 3, end_ts: 20, key_points: [], storytelling_technique: 'unknown' },
     cta: structureAnalysis.cta ?? { text: '', start_ts: 20, end_ts: 30, type: 'unknown', strength_score: 5 },
-    transitions: visualAnalysis.transitions ?? [],
-    music_segments: visualAnalysis.music_segments ?? [],
-    sound_effects: visualAnalysis.sound_effects ?? [],
-    broll_segments: visualAnalysis.broll_segments ?? [],
-    text_overlays: visualAnalysis.text_overlays ?? [],
+    transitions: visualAnalysis.transitions,
+    music_segments: visualAnalysis.music_segments,
+    sound_effects: visualAnalysis.sound_effects,
+    broll_segments: visualAnalysis.broll_segments,
+    text_overlays: visualAnalysis.text_overlays,
+    visual_effects: visualAnalysis.visual_effects,
     viral_patterns: structureAnalysis.viral_patterns ?? {},
-    gemini_model: 'gemini-2.0-flash',
+    editing_analysis_status: editingStatus,
+    gemini_model: 'gemini-2.5-flash',
     claude_model: `${modelProvider}/${modelId}`,
     analyzed_at: new Date().toISOString(),
   }, { onConflict: 'reel_id' })
@@ -410,9 +570,24 @@ async function processInBackground(
 
         if (result === 'timeout') {
           log('warn', `Reel ${reelId} timed out after 90s, skipping`)
+          // Mark as failed on timeout
+          await supabase.from('content_analyses').upsert({
+            reel_id: reelId,
+            hook: { text: '', start_ts: 0, end_ts: 0, type: 'timeout', effectiveness_score: 0 },
+            development: { text: '', start_ts: 0, end_ts: 0, key_points: [], storytelling_technique: 'timeout' },
+            cta: { text: '', start_ts: 0, end_ts: 0, type: 'timeout', strength_score: 0 },
+            editing_analysis_status: 'failed',
+          }, { onConflict: 'reel_id' })
         }
       } catch (err) {
         log('warn', `Reel ${reelId} failed: ${err instanceof Error ? err.message : err}, skipping`)
+        await supabase.from('content_analyses').upsert({
+          reel_id: reelId,
+          hook: { text: '', start_ts: 0, end_ts: 0, type: 'error', effectiveness_score: 0 },
+          development: { text: '', start_ts: 0, end_ts: 0, key_points: [], storytelling_technique: 'error' },
+          cta: { text: '', start_ts: 0, end_ts: 0, type: 'error', strength_score: 0 },
+          editing_analysis_status: 'failed',
+        }, { onConflict: 'reel_id' })
       }
 
       processed++

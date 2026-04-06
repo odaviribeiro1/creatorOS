@@ -18,7 +18,7 @@ type AnalyzeStatus = 'idle' | 'starting' | 'processing' | 'success' | 'error'
 
 export default function AnalysisPage() {
   const navigate = useNavigate()
-  const { analyses, loading, refetch } = useAnalysisList()
+  const { analyses, usedInScriptReelIds, loading, refetch } = useAnalysisList()
   const { profiles } = useProfiles()
   const user = useAppStore((s) => s.user)
   const modelProvider = useAppStore((s) => s.modelProvider)
@@ -32,6 +32,7 @@ export default function AnalysisPage() {
   const [analyzingReelIds, setAnalyzingReelIds] = useState<string[]>([])
   const [currentReelIndex, setCurrentReelIndex] = useState(0)
   const [sortBy, setSortBy] = useState<'recent' | 'views'>('views')
+  const [filterProfileId, setFilterProfileId] = useState<string | 'all'>('all')
 
   // Auto-load unanalyzed reels (top 10 per profile)
   useEffect(() => {
@@ -165,6 +166,25 @@ export default function AnalysisPage() {
     }
     return sorted
   }, [analyses, sortBy])
+
+  const referenceProfiles = useMemo(
+    () => profiles.filter((p) => p.profile_type === 'reference'),
+    [profiles]
+  )
+
+  const groupedAnalyses = useMemo(() => {
+    const filtered = filterProfileId === 'all'
+      ? sortedAnalyses
+      : sortedAnalyses.filter(a => a.reel?.profile_id === filterProfileId)
+
+    const groups: Record<string, typeof sortedAnalyses> = {}
+    for (const a of filtered) {
+      const key = a.reel?.profile?.instagram_username ?? 'unknown'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(a)
+    }
+    return groups
+  }, [sortedAnalyses, filterProfileId])
 
   const isAnalyzing = analyzeStatus === 'starting' || analyzeStatus === 'processing'
 
@@ -442,63 +462,93 @@ export default function AnalysisPage() {
                 Mais recentes
               </Button>
             </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Perfil:</span>
+              <select
+                value={filterProfileId}
+                onChange={e => setFilterProfileId(e.target.value)}
+                className="rounded-lg border border-[rgba(59,130,246,0.15)] bg-[rgba(59,130,246,0.05)] px-2 py-1 text-xs text-foreground outline-none"
+              >
+                <option value="all">Todos</option>
+                {referenceProfiles.map(p => (
+                  <option key={p.id} value={p.id}>@{p.instagram_username}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {sortedAnalyses.map((analysis) => (
-              <Card
-                key={analysis.id}
-                className="cursor-pointer transition-colors hover:border-[rgba(59,130,246,0.45)]"
-                onClick={() => navigate(`/analysis/${analysis.reel_id}`)}
-              >
-                <CardContent className="space-y-3 pt-4">
-                  <div className="flex gap-3">
-                    <div className="size-16 shrink-0 rounded-lg bg-muted" />
-                    <div className="min-w-0 flex-1">
-                      {analysis.reel?.profile?.instagram_username && (
-                        <p className="text-sm font-bold text-foreground">
-                          @{analysis.reel.profile.instagram_username}
-                        </p>
-                      )}
-                      <p className="line-clamp-2 text-xs text-muted-foreground">
-                        {analysis.reel?.caption ?? 'Sem legenda'}
-                      </p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <Badge className="bg-yellow-500/20 text-yellow-400 text-[10px]">
-                          <Eye className="mr-0.5 size-2.5" />
-                          {formatNumber(analysis.reel?.views_count ?? 0)} views
-                        </Badge>
-                        {analysis.reel?.posted_at && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {formatDate(analysis.reel.posted_at)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+          <div className="space-y-6">
+            {Object.entries(groupedAnalyses).map(([username, profileAnalyses]) => (
+              <div key={username} className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground">@{username}</span>
+                  <Badge variant="secondary" className="border border-[rgba(59,130,246,0.2)]">
+                    {profileAnalyses.length} {profileAnalyses.length === 1 ? 'reel' : 'reels'}
+                  </Badge>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {profileAnalyses.map((analysis) => (
+                    <Card
+                      key={analysis.id}
+                      className="cursor-pointer transition-colors hover:border-[rgba(59,130,246,0.45)]"
+                      onClick={() => navigate(`/analysis/${analysis.reel_id}`)}
+                    >
+                      <CardContent className="space-y-3 pt-4">
+                        <div className="flex gap-3">
+                          <div className="size-16 shrink-0 rounded-lg bg-muted" />
+                          <div className="min-w-0 flex-1">
+                            {analysis.reel?.profile?.instagram_username && (
+                              <p className="text-sm font-bold text-foreground">
+                                @{analysis.reel.profile.instagram_username}
+                              </p>
+                            )}
+                            <p className="line-clamp-2 text-xs text-muted-foreground">
+                              {analysis.reel?.caption ?? 'Sem legenda'}
+                            </p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <Badge className="bg-yellow-500/20 text-yellow-400 text-[10px]">
+                                <Eye className="mr-0.5 size-2.5" />
+                                {formatNumber(analysis.reel?.views_count ?? 0)} views
+                              </Badge>
+                              {usedInScriptReelIds.has(analysis.reel_id) && (
+                                <Badge className="bg-[rgba(59,130,246,0.15)] text-[#60A5FA] text-[10px] border border-[rgba(59,130,246,0.25)]">
+                                  Em roteiro
+                                </Badge>
+                              )}
+                              {analysis.reel?.posted_at && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {formatDate(analysis.reel.posted_at)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
 
-                  <div className="grid grid-cols-3 gap-1">
-                    <div className="rounded bg-red-500/10 px-2 py-1 text-center">
-                      <p className="text-[10px] text-red-400">Hook</p>
-                      <p className="text-xs font-medium text-foreground">
-                        {analysis.hook.type}
-                      </p>
-                    </div>
-                    <div className="rounded bg-blue-500/10 px-2 py-1 text-center">
-                      <p className="text-[10px] text-blue-400">Técnica</p>
-                      <p className="truncate text-xs font-medium text-foreground">
-                        {analysis.development.storytelling_technique}
-                      </p>
-                    </div>
-                    <div className="rounded bg-green-500/10 px-2 py-1 text-center">
-                      <p className="text-[10px] text-green-400">CTA</p>
-                      <p className="text-xs font-medium text-foreground">
-                        {analysis.cta.type}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                        <div className="grid grid-cols-3 gap-1">
+                          <div className="rounded bg-red-500/10 px-2 py-1 text-center">
+                            <p className="text-[10px] text-red-400">Hook</p>
+                            <p className="text-xs font-medium text-foreground">
+                              {analysis.hook.type}
+                            </p>
+                          </div>
+                          <div className="rounded bg-blue-500/10 px-2 py-1 text-center">
+                            <p className="text-[10px] text-blue-400">Técnica</p>
+                            <p className="truncate text-xs font-medium text-foreground">
+                              {analysis.development.storytelling_technique}
+                            </p>
+                          </div>
+                          <div className="rounded bg-green-500/10 px-2 py-1 text-center">
+                            <p className="text-[10px] text-green-400">CTA</p>
+                            <p className="text-xs font-medium text-foreground">
+                              {analysis.cta.type}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </>

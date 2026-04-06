@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Heart, MessageCircle, Share2, Eye, Clock, Film } from 'lucide-react'
+import { Heart, MessageCircle, Share2, Eye, Clock, Film, FileText } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatNumber, formatDate, formatDuration } from '@/lib/utils'
@@ -8,9 +8,10 @@ import type { Reel } from '@/types'
 
 interface ReelCardProps {
   reel: Reel
+  usedInScript?: boolean
 }
 
-export function ReelCard({ reel }: ReelCardProps) {
+export function ReelCard({ reel, usedInScript }: ReelCardProps) {
   const navigate = useNavigate()
   const [imgError, setImgError] = useState(false)
   const caption = reel.caption
@@ -37,6 +38,12 @@ export function ReelCard({ reel }: ReelCardProps) {
         ) : (
           <div className="flex size-full items-center justify-center bg-gradient-to-br from-[rgba(59,130,246,0.15)] to-[rgba(37,99,235,0.05)]">
             <Film className="size-8 text-muted-foreground/50" />
+          </div>
+        )}
+        {usedInScript && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-[rgba(59,130,246,0.8)] text-primary-foreground text-[10px] px-2 py-0.5">
+            <FileText className="size-3" />
+            <span>Em roteiro</span>
           </div>
         )}
         {reel.duration_seconds !== null && (

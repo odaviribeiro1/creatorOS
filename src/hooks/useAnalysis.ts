@@ -53,8 +53,9 @@ export function useAnalysis(reelId: string | undefined) {
 
 export function useAnalysisList() {
   const [analyses, setAnalyses] = useState<
-    (ContentAnalysis & { reel?: { caption: string | null; thumbnail_url: string | null; engagement_score: number; views_count: number; posted_at: string | null; profile_id: string; profile: { instagram_username: string } | null } })[]
+    (ContentAnalysis & { reel?: { caption: string | null; thumbnail_url: string | null; engagement_score: number; views_count: number; posted_at: string | null; profile_id: string; profile: { instagram_username: string; profile_pic_url: string | null } | null } })[]
   >([])
+  const [usedInScriptReelIds, setUsedInScriptReelIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -62,16 +63,33 @@ export function useAnalysisList() {
     setLoading(true)
     setError(null)
 
-    const { data, error: fetchError } = await supabase
-      .from('content_analyses')
-      .select('*, reel:reels(caption, thumbnail_url, engagement_score, views_count, posted_at, profile_id, profile:profiles(instagram_username))')
-      .order('analyzed_at', { ascending: false })
+    const [analysesResult, scriptsResult] = await Promise.all([
+      supabase
+        .from('content_analyses')
+        .select('*, reel:reels(caption, thumbnail_url, engagement_score, views_count, posted_at, profile_id, profile:profiles(instagram_username, profile_pic_url))')
+        .order('analyzed_at', { ascending: false }),
+      supabase
+        .from('scripts')
+        .select('reference_reel_ids'),
+    ])
 
-    if (fetchError) {
-      setError(fetchError.message)
+    if (analysesResult.error) {
+      setError(analysesResult.error.message)
     } else {
-      setAnalyses((data ?? []) as typeof analyses)
+      setAnalyses((analysesResult.data ?? []) as typeof analyses)
     }
+
+    // Build set of reel IDs used in scripts
+    const usedIds = new Set<string>()
+    if (scriptsResult.data) {
+      for (const script of scriptsResult.data) {
+        const reelIds = (script as { reference_reel_ids: string[] | null }).reference_reel_ids
+        if (Array.isArray(reelIds)) {
+          for (const id of reelIds) usedIds.add(id)
+        }
+      }
+    }
+    setUsedInScriptReelIds(usedIds)
 
     setLoading(false)
   }, [])
@@ -80,5 +98,5 @@ export function useAnalysisList() {
     fetchAnalyses()
   }, [fetchAnalyses])
 
-  return { analyses, loading, error, refetch: fetchAnalyses }
+  return { analyses, usedInScriptReelIds, loading, error, refetch: fetchAnalyses }
 }

@@ -235,8 +235,23 @@ async function processInBackground(
       status: 'draft',
     }
 
-    const { error: insertError } = await supabase.from('scripts').insert(scriptRecord)
-    if (insertError) throw new Error(`Failed to save script: ${insertError.message}`)
+    const { data: newScript, error: insertError } = await supabase
+      .from('scripts')
+      .insert(scriptRecord)
+      .select('id')
+      .single()
+    if (insertError || !newScript) throw new Error(`Failed to save script: ${insertError?.message}`)
+
+    // Create initial version in script_versions
+    await supabase.from('script_versions').insert({
+      script_id: newScript.id,
+      version_number: 1,
+      script_teleprompter: scriptRecord.script_teleprompter,
+      script_annotated: scriptRecord.script_annotated,
+      editing_report: scriptRecord.editing_report,
+      change_type: 'initial',
+      change_description: 'Gerado por IA',
+    })
 
     await supabase.from('processing_jobs').update({
       status: 'completed', progress: 100,

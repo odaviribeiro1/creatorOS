@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -7,12 +7,30 @@ import {
   Monitor,
   Download,
   CheckCircle2,
+  Sparkles,
+  History,
+  RotateCcw,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { ModelSelector } from '@/components/shared/ModelSelector'
 import { useScript } from '@/hooks/useScripts'
+import { useScriptVersions } from '@/hooks/useScriptVersions'
+import { useAppStore } from '@/store'
+import {
+  saveScriptEdit,
+  restoreScriptVersion,
+  generateScript,
+  getJobStatus,
+} from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
 
@@ -29,7 +47,23 @@ export default function ScriptDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { script, loading, error, refetch } = useScript(id)
+  const { versions, loading: versionsLoading, refetch: refetchVersions } = useScriptVersions(id)
+  const modelProvider = useAppStore((s) => s.modelProvider)
+  const modelId = useAppStore((s) => s.modelId)
   const [updating, setUpdating] = useState(false)
+  const [editedText, setEditedText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [regenOpen, setRegenOpen] = useState(false)
+  const [regenInstructions, setRegenInstructions] = useState('')
+  const [regenerating, setRegenerating] = useState(false)
+  const [regenProgress, setRegenProgress] = useState(0)
+  const [viewingVersion, setViewingVersion] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (script) setEditedText(script.script_teleprompter)
+  }, [script])
+
+  const hasUnsavedChanges = script ? editedText !== script.script_teleprompter : false
 
   async function updateStatus(newStatus: string) {
     if (!script) return
@@ -40,6 +74,95 @@ export default function ScriptDetailPage() {
       .eq('id', script.id)
     await refetch()
     setUpdating(false)
+  }
+
+  async function handleSave() {
+    if (!script || !hasUnsavedChanges) return
+    setSaving(true)
+    try {
+      await saveScriptEdit(script.id, editedText)
+      await refetch()
+      await refetchVersions()
+    } catch { /* ignore */ }
+    setSaving(false)
+  }
+
+  async function handleRegenerate() {
+    if (!script) return
+    setRegenerating(true)
+    setRegenProgress(0)
+    try {
+      const { job_id } = await generateScript({
+        topic: script.topic,
+        voice_profile_id: script.voice_profile_id ?? undefined,
+        reference_reel_ids: script.reference_reel_ids,
+        additional_instructions: regenInstructions || undefined,
+        model_provider: modelProvider,
+        model_id: modelId,
+      })
+      // Poll job
+      let done = false
+      while (!done) {
+        await new Promise(r => setTimeout(r, 3000))
+        try {
+          const job = await getJobStatus(job_id)
+          setRegenProgress(job.progress)
+          if (job.status === 'completed') {
+            done = true
+            // The new script was created as a separate record. We need to fetch it and copy content.
+            // Fetch the latest script for this user with this topic
+            const { data: latestScripts } = await supabase
+              .from('scripts')
+              .select('*')
+              .eq('topic', script.topic)
+              .order('created_at', { ascending: false })
+              .limit(1)
+
+            if (latestScripts && latestScripts.length > 0) {
+              const newScript = latestScripts[0] as Record<string, unknown>
+              if (newScript.id !== script.id) {
+                // Get max version
+                const maxVer = versions.length > 0 ? versions[0].version_number : 0
+                // Create regeneration version
+                await supabase.from('script_versions').insert({
+                  script_id: script.id,
+                  version_number: maxVer + 1,
+                  script_teleprompter: newScript.script_teleprompter,
+                  script_annotated: newScript.script_annotated ?? {},
+                  editing_report: newScript.editing_report ?? {},
+                  change_type: 'ai_regeneration',
+                  change_description: regenInstructions || 'Regenerado com IA',
+                })
+                // Update current script
+                await supabase.from('scripts').update({
+                  script_teleprompter: newScript.script_teleprompter,
+                  script_annotated: newScript.script_annotated,
+                  editing_report: newScript.editing_report,
+                  updated_at: new Date().toISOString(),
+                }).eq('id', script.id)
+                // Delete the duplicate script
+                await supabase.from('scripts').delete().eq('id', newScript.id)
+              }
+            }
+            await refetch()
+            await refetchVersions()
+          } else if (job.status === 'failed') {
+            done = true
+          }
+        } catch { /* continue polling */ }
+      }
+    } catch { /* ignore */ }
+    setRegenerating(false)
+    setRegenOpen(false)
+    setRegenInstructions('')
+  }
+
+  async function handleRestore(versionId: string) {
+    try {
+      await restoreScriptVersion(script!.id, versionId)
+      await refetch()
+      await refetchVersions()
+    } catch { /* ignore */ }
   }
 
   function exportMarkdown() {
@@ -107,6 +230,10 @@ export default function ScriptDetailPage() {
         </div>
 
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setRegenOpen(true)} disabled={regenerating}>
+            <Sparkles className="size-3" />
+            {regenerating ? `Regenerando ${regenProgress}%` : 'Regenerar com IA'}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -164,10 +291,18 @@ export default function ScriptDetailPage() {
           <TabsTrigger value="teleprompter">
             <FileText className="size-3" />
             Roteiro
+            {hasUnsavedChanges && <span className="ml-1 size-1.5 rounded-full bg-yellow-400" />}
           </TabsTrigger>
           <TabsTrigger value="editing">
             <Monitor className="size-3" />
             Relatório de Edição
+          </TabsTrigger>
+          <TabsTrigger value="history">
+            <History className="size-3" />
+            Histórico
+            {versions.length > 0 && (
+              <Badge variant="secondary" className="ml-1 text-[9px] px-1 py-0 h-4">{versions.length}</Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -175,12 +310,26 @@ export default function ScriptDetailPage() {
           <Card>
             <CardContent className="pt-4">
               <div className="mx-auto max-w-2xl">
-                <pre className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                  {script.script_teleprompter}
-                </pre>
+                <textarea
+                  value={editedText}
+                  onChange={(e) => setEditedText(e.target.value)}
+                  className="w-full min-h-[400px] resize-none bg-transparent text-sm leading-relaxed text-foreground outline-none font-mono"
+                  placeholder="Escreva o roteiro aqui..."
+                />
               </div>
             </CardContent>
           </Card>
+          {hasUnsavedChanges && (
+            <div className="mt-3 flex items-center justify-between rounded-xl glass-card px-4 py-3">
+              <span className="text-xs text-yellow-400">Alterações não salvas</span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="xs" onClick={() => setEditedText(script!.script_teleprompter)}>Descartar</Button>
+                <Button size="xs" className="btn-gradient" onClick={handleSave} disabled={saving}>
+                  {saving ? <Loader2 className="size-3 animate-spin" /> : 'Salvar'}
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="editing" className="mt-4 space-y-4">
@@ -318,7 +467,97 @@ export default function ScriptDetailPage() {
             </Card>
           )}
         </TabsContent>
+
+        <TabsContent value="history" className="mt-4">
+          {versionsLoading ? (
+            <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-primary" /></div>
+          ) : versions.length === 0 ? (
+            <Card><CardContent className="py-10 text-center text-muted-foreground text-sm">Nenhuma versão registrada</CardContent></Card>
+          ) : (
+            <div className="space-y-3">
+              {versions.map((v, i) => {
+                const isLatest = i === 0
+                const typeBadge = v.change_type === 'initial'
+                  ? { label: 'Gerado por IA', cls: 'bg-[rgba(59,130,246,0.15)] text-[#60A5FA] border border-[rgba(59,130,246,0.25)]' }
+                  : v.change_type === 'manual_edit'
+                    ? { label: 'Edição manual', cls: 'bg-[rgba(16,185,129,0.15)] text-accent border border-[rgba(16,185,129,0.25)]' }
+                    : { label: 'Regenerado', cls: 'bg-[rgba(147,51,234,0.15)] text-purple-400 border border-[rgba(147,51,234,0.25)]' }
+                return (
+                  <Card key={v.id}>
+                    <CardContent className="flex items-center gap-4 pt-4">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] text-xs font-bold text-primary">
+                        {v.version_number}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Badge className={typeBadge.cls}>{typeBadge.label}</Badge>
+                          {isLatest && <Badge className="bg-[rgba(59,130,246,0.1)] text-[#60A5FA] text-[9px]">Atual</Badge>}
+                        </div>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">
+                          {formatDate(v.created_at)}
+                          {v.change_description && ` · ${v.change_description}`}
+                        </p>
+                        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                          {v.script_teleprompter.slice(0, 120)}...
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <Button variant="ghost" size="xs" onClick={() => setViewingVersion(viewingVersion === v.id ? null : v.id)}>
+                          {viewingVersion === v.id ? 'Fechar' : 'Ver'}
+                        </Button>
+                        {!isLatest && (
+                          <Button variant="outline" size="xs" onClick={() => handleRestore(v.id)}>
+                            <RotateCcw className="size-3" />
+                            Restaurar
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                    {viewingVersion === v.id && (
+                      <CardContent className="border-t border-[rgba(59,130,246,0.08)] pt-3">
+                        <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-foreground bg-[rgba(59,130,246,0.04)] rounded-lg p-3">
+                          {v.script_teleprompter}
+                        </pre>
+                      </CardContent>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* Regenerate Dialog */}
+      <Dialog open={regenOpen} onOpenChange={setRegenOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Regenerar Roteiro com IA</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs text-[#CBD5E1]">Instruções para regeneração</label>
+              <textarea
+                value={regenInstructions}
+                onChange={(e) => setRegenInstructions(e.target.value)}
+                placeholder="Ex: torne o hook mais agressivo, adicione parte sobre preço..."
+                className="w-full min-h-[100px] rounded-lg glass-input px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-[#CBD5E1]">Modelo</label>
+              <ModelSelector compact />
+            </div>
+            <Button className="w-full btn-gradient" onClick={handleRegenerate} disabled={regenerating}>
+              {regenerating ? (
+                <><Loader2 className="size-4 animate-spin" /> Regenerando {regenProgress}%</>
+              ) : (
+                <><Sparkles className="size-4" /> Regenerar</>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
