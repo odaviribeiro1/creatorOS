@@ -55,11 +55,11 @@ export default function SettingsPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <p className="text-[10px] uppercase text-muted-foreground">Email</p>
+              <p className="label-uppercase">Email</p>
               <p className="text-sm text-foreground">{user?.email ?? '—'}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase text-muted-foreground">User ID</p>
+              <p className="label-uppercase">User ID</p>
               <p className="truncate text-sm font-mono text-muted-foreground">
                 {user?.id ?? '—'}
               </p>
@@ -89,7 +89,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2">
             <Key className="size-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">API Keys</h3>
-            <Badge variant="secondary" className="text-[10px]">
+            <Badge variant="secondary" className="text-[10px] border border-[rgba(59,130,246,0.2)]">
               Configuradas via ambiente
             </Badge>
           </div>
@@ -102,7 +102,7 @@ export default function SettingsPage() {
           <div className="space-y-3">
             {API_KEYS.map((apiKey) => (
               <div key={apiKey.key} className="space-y-1">
-                <Label className="text-xs">
+                <Label className="text-xs text-[#CBD5E1]">
                   {apiKey.label}{' '}
                   <span className="font-mono text-muted-foreground">
                     ({apiKey.envVar})
@@ -111,17 +111,17 @@ export default function SettingsPage() {
                 <Input
                   placeholder={apiKey.placeholder}
                   disabled
-                  className="font-mono text-xs"
+                  className="font-mono text-xs glass-input opacity-60"
                 />
               </div>
             ))}
           </div>
 
-          <div className="rounded-lg bg-muted p-3">
+          <div className="rounded-xl bg-[rgba(59,130,246,0.05)] border border-[rgba(59,130,246,0.15)] p-3">
             <p className="text-xs text-muted-foreground">
               Para configurar as API keys, defina as variáveis de ambiente no painel do
               Supabase em{' '}
-              <span className="font-mono text-foreground">
+              <span className="font-mono text-[#60A5FA]">
                 Settings {'>'} Edge Functions {'>'} Secrets
               </span>
             </p>

@@ -25,7 +25,7 @@ export default function ProfilesPage() {
             {profiles.length === 1 ? 'perfil adicionado' : 'perfis adicionados'}
           </p>
         </div>
-        <Button onClick={() => setModalOpen(true)}>
+        <Button onClick={() => setModalOpen(true)} className="btn-gradient">
           <Plus className="size-4" />
           Adicionar Perfil
         </Button>
@@ -37,7 +37,7 @@ export default function ProfilesPage() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="h-28 animate-pulse rounded-xl bg-card ring-1 ring-foreground/10"
+              className="h-28 animate-pulse rounded-2xl glass-card"
             />
           ))}
         </div>
@@ -45,12 +45,12 @@ export default function ProfilesPage() {
 
       {/* Empty state */}
       {!loading && profiles.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card/50 py-16">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
           <Globe className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             Adicione perfis do Instagram para começar a análise
           </p>
-          <Button variant="outline" onClick={() => setModalOpen(true)}>
+          <Button variant="outline" onClick={() => setModalOpen(true)} className="border-[rgba(59,130,246,0.25)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.08)]">
             <Plus className="size-4" />
             Adicionar Perfil
           </Button>
@@ -60,7 +60,7 @@ export default function ProfilesPage() {
       {/* Own profiles */}
       {!loading && ownProfiles.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">
+          <h2 className="label-uppercase">
             Meus Perfis
           </h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -74,7 +74,7 @@ export default function ProfilesPage() {
       {/* Reference profiles */}
       {!loading && referenceProfiles.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">
+          <h2 className="label-uppercase">
             Perfis de Referência
           </h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

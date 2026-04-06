@@ -185,7 +185,7 @@ export default function NewScriptPage() {
               <Loader2 className="size-8 animate-spin text-primary" />
             </div>
           ) : viralReels.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 py-16">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
               <p className="text-sm text-muted-foreground">
                 Nenhum reel de concorrente analisado
               </p>
@@ -198,7 +198,7 @@ export default function NewScriptPage() {
               {viralReels.map((reel) => (
                 <Card
                   key={reel.id}
-                  className="cursor-pointer overflow-hidden transition-all hover:border-primary/40 hover:ring-1 hover:ring-primary/20"
+                  className="cursor-pointer overflow-hidden transition-all hover:border-[rgba(59,130,246,0.45)] hover:ring-1 hover:ring-primary/20"
                   onClick={() => handleSelectReel(reel)}
                 >
                   {/* Thumbnail */}
@@ -274,7 +274,7 @@ export default function NewScriptPage() {
           {/* Config form */}
           <div className="space-y-4">
             {/* Selected reel summary */}
-            <Card className="border-primary/30 bg-primary/5">
+            <Card className="border-[rgba(59,130,246,0.3)]">
               <CardContent className="flex items-center gap-3 pt-4">
                 {selectedReel.thumbnail_url ? (
                   <img
@@ -350,7 +350,7 @@ export default function NewScriptPage() {
                 </div>
 
                 {/* Voice profile status */}
-                <div className="rounded-lg bg-muted p-3">
+                <div className="rounded-lg bg-[rgba(59,130,246,0.05)] border border-[rgba(59,130,246,0.12)] p-3">
                   <div className="flex items-center gap-2">
                     {voiceProfile ? (
                       <>
@@ -425,7 +425,7 @@ export default function NewScriptPage() {
                   </p>
                 </div>
 
-                <div className="h-px bg-border" />
+                <div className="h-px bg-[rgba(59,130,246,0.08)]" />
 
                 <div className="space-y-2">
                   <span className="text-xs font-medium text-foreground">Tom de fala</span>
@@ -456,7 +456,7 @@ export default function NewScriptPage() {
 
       {/* Step 3: Generating */}
       {step === 'generating' && (
-        <Card className="border-primary/30">
+        <Card className="border-[rgba(59,130,246,0.3)]">
           <CardContent className="space-y-6 py-12">
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
@@ -508,7 +508,7 @@ export default function NewScriptPage() {
 
       {/* Step 4: Done */}
       {step === 'done' && (
-        <Card className="border-accent/30 bg-accent/5">
+        <Card className="border-[rgba(16,185,129,0.3)]">
           <CardContent className="space-y-4 py-12">
             <div className="flex flex-col items-center gap-4">
               <div className="flex size-16 items-center justify-center rounded-full bg-accent/20">

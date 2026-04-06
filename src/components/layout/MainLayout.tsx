@@ -31,7 +31,7 @@ export function MainLayout() {
   const title = getPageTitle(location.pathname)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div
         className={cn(

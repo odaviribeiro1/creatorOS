@@ -62,13 +62,22 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div
+      className="flex min-h-screen items-center justify-center px-4"
+      style={{
+        background: `
+          radial-gradient(ellipse at 30% 20%, rgba(59, 130, 246, 0.1), transparent 50%),
+          radial-gradient(ellipse at 70% 80%, rgba(37, 99, 235, 0.06), transparent 50%),
+          #0A0A0F
+        `,
+      }}
+    >
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">
+          <CardTitle className="text-2xl font-bold tracking-tight text-foreground">
             Creator OS
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-muted-foreground">
             Analise conteúdo viral e gere roteiros personalizados para Instagram
             Reels
           </CardDescription>
@@ -76,7 +85,7 @@ export function LoginPage() {
 
         <CardContent className="flex flex-col gap-6">
           {signUpSuccess ? (
-            <div className="flex flex-col items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-6 text-center">
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-[rgba(59,130,246,0.25)] bg-[rgba(59,130,246,0.05)] p-6 text-center">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -85,7 +94,7 @@ export function LoginPage() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="h-10 w-10 text-primary"
+                className="h-10 w-10 text-accent"
               >
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
@@ -112,7 +121,7 @@ export function LoginPage() {
             <>
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-[#CBD5E1]">Email</Label>
                   <Input
                     id="email"
                     type="email"
@@ -121,10 +130,11 @@ export function LoginPage() {
                     onChange={(e) => setEmail((e.target as HTMLInputElement).value)}
                     required
                     autoComplete="email"
+                    className="glass-input"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="password">Senha</Label>
+                  <Label htmlFor="password" className="text-[#CBD5E1]">Senha</Label>
                   <Input
                     id="password"
                     type="password"
@@ -134,12 +144,13 @@ export function LoginPage() {
                     required
                     autoComplete={isSignUp ? 'new-password' : 'current-password'}
                     minLength={6}
+                    className="glass-input"
                   />
                 </div>
                 <Button
                   type="submit"
                   disabled={loading || !email || !password}
-                  className="w-full"
+                  className="w-full btn-gradient"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
@@ -158,7 +169,7 @@ export function LoginPage() {
               <div className="text-center">
                 <button
                   type="button"
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-sm text-muted-foreground hover:text-[#60A5FA] transition-colors"
                   onClick={() => {
                     setIsSignUp(!isSignUp)
                     setError(null)

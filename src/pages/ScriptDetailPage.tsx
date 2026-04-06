@@ -17,10 +17,10 @@ import { formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  draft: { label: 'Rascunho', className: 'bg-yellow-500/20 text-yellow-400' },
-  approved: { label: 'Aprovado', className: 'bg-blue-500/20 text-blue-400' },
-  recorded: { label: 'Gravado', className: 'bg-accent/20 text-accent' },
-  published: { label: 'Publicado', className: 'bg-green-500/20 text-green-400' },
+  draft: { label: 'Rascunho', className: 'bg-[rgba(59,130,246,0.15)] text-[#60A5FA] border border-[rgba(59,130,246,0.25)]' },
+  approved: { label: 'Aprovado', className: 'bg-[rgba(37,99,235,0.15)] text-[#3B82F6] border border-[rgba(37,99,235,0.25)]' },
+  recorded: { label: 'Gravado', className: 'bg-[rgba(16,185,129,0.15)] text-accent border border-[rgba(16,185,129,0.25)]' },
+  published: { label: 'Publicado', className: 'bg-[rgba(16,185,129,0.2)] text-accent border border-[rgba(16,185,129,0.3)]' },
 }
 
 const STATUS_ORDER: string[] = ['draft', 'approved', 'recorded', 'published']
@@ -189,14 +189,14 @@ export default function ScriptDetailPage() {
             <Card>
               <CardContent className="flex flex-wrap gap-4 pt-4">
                 <div>
-                  <p className="text-[10px] uppercase text-muted-foreground">Duração</p>
+                  <p className="label-uppercase">Duração</p>
                   <p className="text-sm text-foreground">
                     {String(editingReport.total_duration_estimate)}
                   </p>
                 </div>
                 {editingReport.color_grading ? (
                   <div>
-                    <p className="text-[10px] uppercase text-muted-foreground">Color Grading</p>
+                    <p className="label-uppercase">Color Grading</p>
                     <p className="text-sm text-foreground">
                       {String(editingReport.color_grading)}
                     </p>
@@ -204,7 +204,7 @@ export default function ScriptDetailPage() {
                 ) : null}
                 {editingReport.aspect_ratio ? (
                   <div>
-                    <p className="text-[10px] uppercase text-muted-foreground">Aspecto</p>
+                    <p className="label-uppercase">Aspecto</p>
                     <p className="text-sm text-foreground">
                       {String(editingReport.aspect_ratio)}
                     </p>
@@ -212,7 +212,7 @@ export default function ScriptDetailPage() {
                 ) : null}
                 {editingReport.captions_style ? (
                   <div>
-                    <p className="text-[10px] uppercase text-muted-foreground">Legendas</p>
+                    <p className="label-uppercase">Legendas</p>
                     <p className="text-sm text-foreground">
                       {String(editingReport.captions_style)}
                     </p>
@@ -260,7 +260,7 @@ export default function ScriptDetailPage() {
                 {editingInstructions.map((instruction, i) => (
                   <div
                     key={i}
-                    className="space-y-1.5 rounded-lg border border-border bg-muted/50 p-3"
+                    className="space-y-1.5 rounded-lg border border-border bg-[rgba(59,130,246,0.04)] border-[rgba(59,130,246,0.12)] p-3"
                   >
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="font-mono text-[10px]">

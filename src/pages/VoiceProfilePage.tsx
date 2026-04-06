@@ -93,7 +93,7 @@ export default function VoiceProfilePage() {
 
       {/* Active jobs */}
       {vpJobs.length > 0 && (
-        <Card className="border-primary/30 bg-primary/5">
+        <Card className="border-[rgba(59,130,246,0.3)]">
           <CardContent className="flex items-center gap-3 pt-6">
             <Loader2 className="size-5 animate-spin text-primary" />
             <span className="text-sm">
@@ -106,7 +106,7 @@ export default function VoiceProfilePage() {
 
       {/* No own profile */}
       {!ownProfile && (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 py-16">
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
           <Mic className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             Adicione seu perfil do Instagram primeiro
@@ -133,35 +133,35 @@ export default function VoiceProfilePage() {
 
               {voiceProfile.tone_description && (
                 <div className="space-y-1">
-                  <p className="text-[10px] uppercase text-muted-foreground">Tom</p>
+                  <p className="label-uppercase">Tom</p>
                   <p className="text-sm text-foreground">{voiceProfile.tone_description}</p>
                 </div>
               )}
 
               {voiceProfile.vocabulary_style && (
                 <div className="space-y-1">
-                  <p className="text-[10px] uppercase text-muted-foreground">Vocabulário</p>
+                  <p className="label-uppercase">Vocabulário</p>
                   <p className="text-sm text-foreground">{voiceProfile.vocabulary_style}</p>
                 </div>
               )}
 
               {voiceProfile.sentence_structure && (
                 <div className="space-y-1">
-                  <p className="text-[10px] uppercase text-muted-foreground">Estrutura</p>
+                  <p className="label-uppercase">Estrutura</p>
                   <p className="text-sm text-foreground">{voiceProfile.sentence_structure}</p>
                 </div>
               )}
 
               {voiceProfile.pacing_style && (
                 <div className="space-y-1">
-                  <p className="text-[10px] uppercase text-muted-foreground">Ritmo</p>
+                  <p className="label-uppercase">Ritmo</p>
                   <p className="text-sm text-foreground">{voiceProfile.pacing_style}</p>
                 </div>
               )}
 
               {voiceProfile.emotional_range && (
                 <div className="space-y-1">
-                  <p className="text-[10px] uppercase text-muted-foreground">Emoções</p>
+                  <p className="label-uppercase">Emoções</p>
                   <p className="text-sm text-foreground">{voiceProfile.emotional_range}</p>
                 </div>
               )}
@@ -178,7 +178,7 @@ export default function VoiceProfilePage() {
               {/* Filler words */}
               {voiceProfile.filler_words.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-[10px] uppercase text-muted-foreground">
+                  <p className="label-uppercase">
                     Palavras de preenchimento
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -196,7 +196,7 @@ export default function VoiceProfilePage() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-1">
                     <Quote className="size-3 text-muted-foreground" />
-                    <p className="text-[10px] uppercase text-muted-foreground">
+                    <p className="label-uppercase">
                       Expressões frequentes
                     </p>
                   </div>
@@ -204,7 +204,7 @@ export default function VoiceProfilePage() {
                     {voiceProfile.common_expressions.map((expr) => (
                       <div
                         key={expr}
-                        className="rounded bg-muted px-2 py-1 text-xs text-foreground"
+                        className="rounded bg-[rgba(59,130,246,0.06)] border border-[rgba(59,130,246,0.12)] px-2 py-1 text-xs text-foreground"
                       >
                         "{expr}"
                       </div>
@@ -221,7 +221,7 @@ export default function VoiceProfilePage() {
               <h3 className="mb-3 text-sm font-semibold text-foreground">
                 Documento Completo do Voice Profile
               </h3>
-              <div className="max-h-64 overflow-y-auto rounded-lg bg-muted p-4">
+              <div className="max-h-64 overflow-y-auto rounded-lg bg-[rgba(59,130,246,0.05)] border border-[rgba(59,130,246,0.12)] p-4">
                 <pre className="whitespace-pre-wrap text-xs text-foreground leading-relaxed">
                   {voiceProfile.full_profile_document}
                 </pre>
@@ -298,7 +298,7 @@ export default function VoiceProfilePage() {
       )}
 
       {ownProfile && ownReels.length === 0 && !voiceProfile && (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 py-16">
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
           <Mic className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             Nenhum reel encontrado no seu perfil

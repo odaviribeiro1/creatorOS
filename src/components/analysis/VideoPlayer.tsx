@@ -51,7 +51,7 @@ export function VideoPlayer({ src, thumbnail, onTimeUpdate, seekTo }: VideoPlaye
 
   if (!src) {
     return (
-      <div className="flex aspect-[9/16] max-h-[500px] items-center justify-center rounded-lg bg-muted">
+      <div className="flex aspect-[9/16] max-h-[500px] items-center justify-center rounded-xl bg-[rgba(59,130,246,0.06)] border border-[rgba(59,130,246,0.12)]">
         {thumbnail ? (
           <img src={thumbnail} alt="" className="size-full rounded-lg object-cover" />
         ) : (
@@ -86,7 +86,7 @@ export function VideoPlayer({ src, thumbnail, onTimeUpdate, seekTo }: VideoPlaye
         </Button>
 
         <div
-          className="relative h-1.5 flex-1 cursor-pointer rounded-full bg-muted"
+          className="relative h-1.5 flex-1 cursor-pointer rounded-full bg-[rgba(59,130,246,0.12)]"
           onClick={handleProgressClick}
         >
           <div

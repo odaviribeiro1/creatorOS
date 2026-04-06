@@ -61,7 +61,7 @@ export default function ProfileReelsPage() {
         </Button>
 
         {profileLoading && (
-          <div className="h-16 animate-pulse rounded-xl bg-card ring-1 ring-foreground/10" />
+          <div className="h-16 animate-pulse rounded-xl bg-card ring-1 border border-[rgba(59,130,246,0.15)]" />
         )}
 
         {profile && (
@@ -70,10 +70,10 @@ export default function ProfileReelsPage() {
               <img
                 src={profile.profile_pic_url}
                 alt={profile.instagram_username}
-                className="size-14 rounded-full object-cover ring-1 ring-border"
+                className="size-14 rounded-full object-cover border border-[rgba(59,130,246,0.15)]"
               />
             ) : (
-              <div className="flex size-14 items-center justify-center rounded-full bg-muted text-lg font-semibold text-muted-foreground ring-1 ring-border">
+              <div className="flex size-14 items-center justify-center rounded-full bg-muted text-lg font-semibold text-muted-foreground border border-[rgba(59,130,246,0.15)]">
                 {profile.instagram_username.charAt(0).toUpperCase()}
               </div>
             )}
@@ -140,7 +140,7 @@ export default function ProfileReelsPage() {
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="aspect-[9/16] animate-pulse rounded-xl bg-card ring-1 ring-foreground/10"
+              className="aspect-[9/16] animate-pulse rounded-xl bg-card ring-1 border border-[rgba(59,130,246,0.15)]"
             />
           ))}
         </div>
@@ -148,7 +148,7 @@ export default function ProfileReelsPage() {
 
       {/* Empty state */}
       {!reelsLoading && reels.length === 0 && !reelsError && (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 py-16">
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
           <p className="text-sm text-muted-foreground">
             Nenhum reel encontrado para este perfil.
           </p>

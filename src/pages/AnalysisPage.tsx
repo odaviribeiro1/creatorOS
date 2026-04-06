@@ -282,9 +282,9 @@ export default function AnalysisPage() {
 
       {/* Processing animation — always visible when analyzing */}
       {isAnalyzing && analyzingReelIds.length > 0 && (
-        <Card className="border-primary/30 overflow-hidden">
+        <Card className="border-[rgba(59,130,246,0.3)] overflow-hidden">
           {/* Animated top border */}
-          <div className="h-0.5 w-full bg-muted overflow-hidden">
+          <div className="h-0.5 w-full bg-[rgba(59,130,246,0.06)] overflow-hidden">
             <div className="h-full bg-primary animate-[shimmer_2s_ease-in-out_infinite]" style={{
               width: '40%',
               animation: 'shimmer 2s ease-in-out infinite',
@@ -392,7 +392,7 @@ export default function AnalysisPage() {
 
       {/* Success animation */}
       {analyzeStatus === 'success' && (
-        <Card className="border-accent/30 bg-accent/5">
+        <Card className="border-[rgba(16,185,129,0.3)]">
           <CardContent className="flex items-center gap-3 pt-6">
             <div className="flex size-8 items-center justify-center rounded-full bg-accent/20">
               <Check className="size-4 text-accent" />
@@ -409,7 +409,7 @@ export default function AnalysisPage() {
 
       {/* Sort + Analyses grid */}
       {analyses.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 py-16">
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
           <BarChart3 className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Nenhuma análise concluída</p>
           <p className="text-xs text-muted-foreground">
@@ -448,7 +448,7 @@ export default function AnalysisPage() {
             {sortedAnalyses.map((analysis) => (
               <Card
                 key={analysis.id}
-                className="cursor-pointer transition-colors hover:border-primary/40"
+                className="cursor-pointer transition-colors hover:border-[rgba(59,130,246,0.45)]"
                 onClick={() => navigate(`/analysis/${analysis.reel_id}`)}
               >
                 <CardContent className="space-y-3 pt-4">

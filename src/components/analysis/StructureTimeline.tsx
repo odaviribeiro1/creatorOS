@@ -34,7 +34,7 @@ export function StructureTimeline({ analysis, onSeek }: StructureTimelineProps) 
       <h3 className="text-sm font-semibold text-foreground">Estrutura Narrativa</h3>
 
       {/* Timeline bar */}
-      <div className="relative h-8 w-full overflow-hidden rounded-lg bg-muted">
+      <div className="relative h-8 w-full overflow-hidden rounded-lg bg-[rgba(59,130,246,0.06)]">
         {sections.map((section) => {
           const data = analysis[section.key]
           const width = getWidth(data.start_ts, data.end_ts)
@@ -82,7 +82,7 @@ export function StructureTimeline({ analysis, onSeek }: StructureTimelineProps) 
           return (
             <div
               key={section.key}
-              className="rounded-lg border border-border bg-card p-3 space-y-1"
+              className="rounded-lg border border-[rgba(59,130,246,0.12)] bg-[rgba(59,130,246,0.04)] p-3 space-y-1"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

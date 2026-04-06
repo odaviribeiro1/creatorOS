@@ -71,7 +71,7 @@ export function EditingElementsMap({ analysis, onSeek }: EditingElementsMapProps
 
       <div className="space-y-3">
         {elements.map((group) => (
-          <div key={group.title} className="rounded-lg border border-border bg-card p-3">
+          <div key={group.title} className="rounded-lg border border-[rgba(59,130,246,0.12)] bg-[rgba(59,130,246,0.04)] p-3">
             <div className="mb-2 flex items-center gap-2">
               <group.icon className={`size-4 ${group.color}`} />
               <span className="text-xs font-medium text-foreground">{group.title}</span>
@@ -87,7 +87,7 @@ export function EditingElementsMap({ analysis, onSeek }: EditingElementsMapProps
                 {group.items.map((item, i) => (
                   <button
                     key={i}
-                    className="flex w-full items-start gap-2 rounded px-2 py-1 text-left transition-colors hover:bg-muted"
+                    className="flex w-full items-start gap-2 rounded px-2 py-1 text-left transition-colors hover:bg-[rgba(59,130,246,0.08)]"
                     onClick={() => onSeek?.(item.time)}
                   >
                     <span className="mt-0.5 shrink-0 text-[10px] font-mono text-muted-foreground">

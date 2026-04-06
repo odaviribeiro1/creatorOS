@@ -144,7 +144,7 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
 
   return (
     <Card
-      className="cursor-pointer transition-colors hover:ring-primary/30"
+      className="cursor-pointer transition-colors hover:border-[rgba(59,130,246,0.45)]"
       onClick={() => navigate(`/profiles/${profile.id}/reels`)}
     >
       <CardHeader>
@@ -153,12 +153,12 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
             <img
               src={profile.profile_pic_url}
               alt={profile.instagram_username}
-              className="size-10 rounded-full object-cover ring-1 ring-border"
+              className="size-10 rounded-full object-cover border border-[rgba(59,130,246,0.15)]"
               referrerPolicy="no-referrer"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
           ) : (
-            <div className="flex size-10 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground ring-1 ring-border">
+            <div className="flex size-10 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground border border-[rgba(59,130,246,0.15)]">
               {profile.instagram_username.charAt(0).toUpperCase()}
             </div>
           )}

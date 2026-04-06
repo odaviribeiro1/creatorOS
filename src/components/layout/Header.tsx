@@ -24,15 +24,15 @@ export function Header({ title }: HeaderProps) {
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
+    <header className="flex h-16 items-center justify-between glass-header px-6">
       <h1 className="text-lg font-semibold text-foreground">{title}</h1>
 
       <div className="flex items-center gap-4">
         {/* Processing jobs indicator */}
         {activeCount > 0 && (
-          <div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
-            <span className="text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 rounded-full bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] px-3 py-1">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+            <span className="text-xs text-[#60A5FA]">
               {activeCount} processando
             </span>
           </div>
@@ -41,7 +41,7 @@ export function Header({ title }: HeaderProps) {
         {/* User info */}
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary/20 text-xs text-primary">
+            <AvatarFallback className="bg-[rgba(59,130,246,0.15)] text-xs text-primary border border-[rgba(59,130,246,0.2)]">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -55,7 +55,7 @@ export function Header({ title }: HeaderProps) {
           variant="ghost"
           size="icon"
           onClick={handleLogout}
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          className="h-8 w-8 text-muted-foreground hover:text-[#60A5FA] hover:bg-[rgba(59,130,246,0.08)]"
         >
           <LogOut className="h-4 w-4" />
         </Button>

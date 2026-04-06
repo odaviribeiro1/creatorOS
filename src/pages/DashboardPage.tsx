@@ -52,25 +52,29 @@ export default function DashboardPage() {
       title: 'Perfis',
       value: profiles.length,
       icon: Users,
-      color: 'text-primary',
+      color: 'text-[#3B82F6]',
+      bgColor: 'bg-[rgba(59,130,246,0.1)]',
     },
     {
       title: 'Reels',
       value: totalReels,
       icon: Film,
-      color: 'text-blue-400',
+      color: 'text-[#60A5FA]',
+      bgColor: 'bg-[rgba(96,165,250,0.1)]',
     },
     {
       title: 'Top Engagement',
       value: topReels[0]?.engagement_score ?? 0,
       icon: TrendingUp,
       color: 'text-accent',
+      bgColor: 'bg-[rgba(16,185,129,0.1)]',
     },
     {
       title: 'Jobs Ativos',
       value: activeJobCount,
       icon: Zap,
-      color: 'text-yellow-400',
+      color: 'text-[#2563EB]',
+      bgColor: 'bg-[rgba(37,99,235,0.1)]',
     },
   ]
 
@@ -85,15 +89,15 @@ export default function DashboardPage() {
   if (profiles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
-        <div className="rounded-full bg-primary/10 p-6">
+        <div className="rounded-full bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] p-6">
           <Zap className="size-12 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold">Bem-vindo ao Creator OS</h2>
+        <h2 className="text-2xl font-bold text-foreground">Bem-vindo ao Creator OS</h2>
         <p className="max-w-md text-center text-muted-foreground">
           Comece adicionando perfis do Instagram para extrair e analisar
           conteúdos virais.
         </p>
-        <Button onClick={() => navigate('/profiles')} className="mt-2">
+        <Button onClick={() => navigate('/profiles')} className="mt-2 btn-gradient">
           Adicionar Perfis
           <ArrowRight className="ml-2 size-4" />
         </Button>
@@ -108,12 +112,12 @@ export default function DashboardPage() {
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardContent className="flex items-center gap-4 pt-6">
-              <div className="rounded-lg bg-muted p-3">
+              <div className={`rounded-xl ${stat.bgColor} border border-[rgba(59,130,246,0.15)] p-3`}>
                 <stat.icon className={`size-5 ${stat.color}`} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">{stat.title}</p>
-                <p className="text-2xl font-bold">{formatNumber(stat.value)}</p>
+                <p className="label-uppercase">{stat.title}</p>
+                <p className="text-2xl font-extrabold text-foreground">{formatNumber(stat.value)}</p>
               </div>
             </CardContent>
           </Card>
@@ -122,10 +126,10 @@ export default function DashboardPage() {
 
       {/* Active jobs */}
       {activeJobCount > 0 && (
-        <Card className="border-primary/30 bg-primary/5">
+        <Card className="border-[rgba(59,130,246,0.3)]">
           <CardContent className="flex items-center gap-3 pt-6">
             <Loader2 className="size-5 animate-spin text-primary" />
-            <span className="text-sm">
+            <span className="text-sm text-[#60A5FA]">
               {activeJobCount} job{activeJobCount > 1 ? 's' : ''} em
               processamento...
             </span>
@@ -138,13 +142,14 @@ export default function DashboardPage() {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CardTitle className="text-lg">Ranking Viral</CardTitle>
-            <Badge variant="secondary">{totalReels} reels</Badge>
+            <Badge variant="secondary" className="border border-[rgba(59,130,246,0.2)]">{totalReels} reels</Badge>
           </div>
           {profiles.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate(`/profiles/${profiles[0].id}/reels`)}
+              className="text-[#60A5FA] hover:text-primary hover:bg-[rgba(59,130,246,0.08)]"
             >
               Ver todos
               <ArrowRight className="ml-1 size-3" />
@@ -156,10 +161,10 @@ export default function DashboardPage() {
           <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Card key={i} className="animate-pulse">
-                <div className="aspect-[9/16] bg-muted" />
+                <div className="aspect-[9/16] bg-[rgba(59,130,246,0.05)]" />
                 <CardContent className="space-y-2 pt-2">
-                  <div className="h-3 w-3/4 rounded bg-muted" />
-                  <div className="h-3 w-1/2 rounded bg-muted" />
+                  <div className="h-3 w-3/4 rounded bg-[rgba(59,130,246,0.08)]" />
+                  <div className="h-3 w-1/2 rounded bg-[rgba(59,130,246,0.05)]" />
                 </CardContent>
               </Card>
             ))}
@@ -169,7 +174,7 @@ export default function DashboardPage() {
             {topReels.map((reel, index) => (
               <div key={reel.id} className="relative">
                 {index < 3 && (
-                  <Badge className="absolute -left-2 -top-2 z-10 bg-accent text-accent-foreground">
+                  <Badge className="absolute -left-2 -top-2 z-10 btn-gradient border-0 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
                     #{index + 1}
                   </Badge>
                 )}

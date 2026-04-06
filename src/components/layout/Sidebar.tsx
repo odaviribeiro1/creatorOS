@@ -41,12 +41,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border bg-card transition-all duration-200',
+        'fixed left-0 top-0 z-40 flex h-screen flex-col glass-sidebar transition-all duration-200',
         collapsed ? 'w-16' : 'w-60'
       )}
     >
       {/* Brand */}
-      <div className="flex h-16 items-center gap-2 border-b border-border px-4">
+      <div className="flex h-16 items-center gap-2 border-b border-[rgba(59,130,246,0.1)] px-4">
         <Zap className="h-6 w-6 shrink-0 text-primary" />
         {!collapsed && (
           <span className="truncate text-sm font-bold tracking-tight text-foreground">
@@ -66,10 +66,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-300',
                   isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'btn-gradient shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+                    : 'text-muted-foreground hover:bg-[rgba(59,130,246,0.08)] hover:text-foreground'
                 )
               }
             >
@@ -95,16 +95,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {activeCount > 0 && (
         <div
           className={cn(
-            'mx-2 mb-2 flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2',
+            'mx-2 mb-2 flex items-center gap-2 rounded-xl bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] px-3 py-2',
             collapsed && 'justify-center px-0'
           )}
         >
           <span className="relative flex h-2 w-2 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
           </span>
           {!collapsed && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-[#60A5FA]">
               {activeCount} job{activeCount > 1 ? 's' : ''} ativo{activeCount > 1 ? 's' : ''}
             </span>
           )}
@@ -114,7 +114,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Toggle button */}
       <button
         onClick={onToggle}
-        className="flex h-12 items-center justify-center border-t border-border text-muted-foreground transition-colors hover:text-foreground"
+        className="flex h-12 items-center justify-center border-t border-[rgba(59,130,246,0.1)] text-muted-foreground transition-colors hover:text-[#60A5FA]"
       >
         {collapsed ? (
           <ChevronRight className="h-4 w-4" />

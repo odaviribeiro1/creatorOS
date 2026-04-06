@@ -17,7 +17,7 @@ export function TranscriptViewer({
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-foreground">Transcrição</h3>
 
-      <div className="max-h-80 space-y-1 overflow-y-auto rounded-lg border border-border bg-card p-3">
+      <div className="max-h-80 space-y-1 overflow-y-auto rounded-lg border border-[rgba(59,130,246,0.12)] bg-[rgba(59,130,246,0.04)] p-3">
         {transcription.segments.map((segment, i) => {
           const isActive =
             currentTime >= segment.start && currentTime < segment.end
@@ -29,7 +29,7 @@ export function TranscriptViewer({
                 'flex w-full gap-3 rounded px-2 py-1.5 text-left transition-colors',
                 isActive
                   ? 'bg-primary/10 text-foreground'
-                  : 'hover:bg-muted text-muted-foreground'
+                  : 'hover:bg-[rgba(59,130,246,0.08)] text-muted-foreground'
               )}
               onClick={() => onSeek?.(segment.start)}
             >

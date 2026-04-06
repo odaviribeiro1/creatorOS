@@ -8,10 +8,10 @@ import { useAppStore } from '@/store'
 import { formatDate } from '@/lib/utils'
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  draft: { label: 'Rascunho', className: 'bg-yellow-500/20 text-yellow-400' },
-  approved: { label: 'Aprovado', className: 'bg-blue-500/20 text-blue-400' },
-  recorded: { label: 'Gravado', className: 'bg-accent/20 text-accent' },
-  published: { label: 'Publicado', className: 'bg-green-500/20 text-green-400' },
+  draft: { label: 'Rascunho', className: 'bg-[rgba(59,130,246,0.15)] text-[#60A5FA] border border-[rgba(59,130,246,0.25)]' },
+  approved: { label: 'Aprovado', className: 'bg-[rgba(37,99,235,0.15)] text-[#3B82F6] border border-[rgba(37,99,235,0.25)]' },
+  recorded: { label: 'Gravado', className: 'bg-[rgba(16,185,129,0.15)] text-accent border border-[rgba(16,185,129,0.25)]' },
+  published: { label: 'Publicado', className: 'bg-[rgba(16,185,129,0.2)] text-accent border border-[rgba(16,185,129,0.3)]' },
 }
 
 export default function ScriptsPage() {
@@ -43,7 +43,7 @@ export default function ScriptsPage() {
             Roteiros gerados com padrões virais + seu tom de fala
           </p>
         </div>
-        <Button size="sm" onClick={() => navigate('/scripts/new')}>
+        <Button size="sm" onClick={() => navigate('/scripts/new')} className="btn-gradient">
           <Plus className="size-3" />
           Novo Roteiro
         </Button>
@@ -51,10 +51,10 @@ export default function ScriptsPage() {
 
       {/* Active jobs */}
       {scriptJobs.length > 0 && (
-        <Card className="border-primary/30 bg-primary/5">
+        <Card className="border-[rgba(59,130,246,0.3)]">
           <CardContent className="flex items-center gap-3 pt-6">
             <Loader2 className="size-5 animate-spin text-primary" />
-            <span className="text-sm">
+            <span className="text-sm text-[#60A5FA]">
               Gerando roteiro...
               {scriptJobs[0]?.progress > 0 && ` (${scriptJobs[0].progress}%)`}
             </span>
@@ -64,10 +64,10 @@ export default function ScriptsPage() {
 
       {/* Scripts list */}
       {scripts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card/50 py-16">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
           <FileText className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Nenhum roteiro gerado</p>
-          <Button size="sm" onClick={() => navigate('/scripts/new')}>
+          <Button size="sm" onClick={() => navigate('/scripts/new')} className="btn-gradient">
             <Plus className="size-3" />
             Criar primeiro roteiro
           </Button>
@@ -79,11 +79,11 @@ export default function ScriptsPage() {
             return (
               <Card
                 key={script.id}
-                className="cursor-pointer transition-colors hover:border-primary/40"
+                className="cursor-pointer"
                 onClick={() => navigate(`/scripts/${script.id}`)}
               >
                 <CardContent className="flex items-center gap-4 pt-4">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)]">
                     <FileText className="size-5 text-primary" />
                   </div>
 
