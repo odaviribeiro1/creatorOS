@@ -1,4 +1,4 @@
--- ViralScript AI - Initial Database Schema
+-- Creator OS - Initial Database Schema
 -- Migration: 20260403000000_initial_schema
 
 -- =============================================================================

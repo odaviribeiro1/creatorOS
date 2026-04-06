@@ -66,7 +66,7 @@ export function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold tracking-tight">
-            ViralScript AI
+            Creator OS
           </CardTitle>
           <CardDescription>
             Analise conteúdo viral e gere roteiros personalizados para Instagram

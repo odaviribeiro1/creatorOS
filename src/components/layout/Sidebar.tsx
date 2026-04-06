@@ -50,7 +50,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <Zap className="h-6 w-6 shrink-0 text-primary" />
         {!collapsed && (
           <span className="truncate text-sm font-bold tracking-tight text-foreground">
-            ViralScript AI
+            Creator OS
           </span>
         )}
       </div>

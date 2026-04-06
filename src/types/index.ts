@@ -1,5 +1,5 @@
 // ==========================================
-// Database Types — ViralScript AI
+// Database Types — Creator OS
 // ==========================================
 
 // --- Model Provider ---

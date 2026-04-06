@@ -1,4 +1,4 @@
-# CLAUDE.md — ViralScript AI
+# CLAUDE.md — Creator OS
 
 > Ferramenta interna da Agentise para análise de conteúdo viral do Instagram, extração de padrões de viralização, e geração de roteiros personalizados com tom de fala do criador + relatório de edição para o editor de vídeo.
 
@@ -6,7 +6,7 @@
 
 ## 1. Visão Geral do Produto
 
-**ViralScript AI** é uma ferramenta de uso interno que automatiza o ciclo completo de criação de conteúdo para Instagram Reels:
+**Creator OS** é uma ferramenta de uso interno que automatiza o ciclo completo de criação de conteúdo para Instagram Reels:
 
 1. **Extrai** os conteúdos mais virais de perfis fornecidos pelo usuário
 2. **Analisa** métricas (curtidas, comentários, compartilhamentos, views)

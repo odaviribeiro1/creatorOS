@@ -88,7 +88,7 @@ export default function DashboardPage() {
         <div className="rounded-full bg-primary/10 p-6">
           <Zap className="size-12 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold">Bem-vindo ao ViralScript AI</h2>
+        <h2 className="text-2xl font-bold">Bem-vindo ao Creator OS</h2>
         <p className="max-w-md text-center text-muted-foreground">
           Comece adicionando perfis do Instagram para extrair e analisar
           conteúdos virais.

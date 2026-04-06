@@ -22,7 +22,7 @@ function getPageTitle(pathname: string): string {
   if (/^\/profiles\/[^/]+\/reels$/.test(pathname)) return 'Reels do Perfil'
   if (/^\/scripts\/[^/]+$/.test(pathname)) return 'Roteiro'
 
-  return 'ViralScript AI'
+  return 'Creator OS'
 }
 
 export function MainLayout() {
