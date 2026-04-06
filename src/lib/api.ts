@@ -41,6 +41,20 @@ export async function getJobStatus(jobId: string): Promise<ProcessingJob> {
   return data as ProcessingJob;
 }
 
+export async function scrapeReelUrl(
+  reelUrl: string
+): Promise<{ job_id: string }> {
+  const user_id = await getUserId();
+  const { data, error } = await supabase.functions.invoke('scrape-reel-url', {
+    body: { reel_url: reelUrl, user_id },
+  });
+
+  if (error) throw new Error(`Failed to start reel scrape: ${error.message}`);
+  if (data?.error) throw new Error(data.error);
+
+  return data as { job_id: string };
+}
+
 export async function analyzeContent(
   reelIds: string[],
   modelProvider: ModelProvider,

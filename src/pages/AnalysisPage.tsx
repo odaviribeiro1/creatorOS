@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, Play, Loader2, Check, X, AlertCircle, Sparkles, Eye } from 'lucide-react'
+import { BarChart3, Play, Loader2, Check, X, AlertCircle, Sparkles, Eye, Link } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,8 @@ import { ModelSelector } from '@/components/shared/ModelSelector'
 import { useAnalysisList } from '@/hooks/useAnalysis'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useAppStore } from '@/store'
-import { analyzeContent, getJobStatus } from '@/lib/api'
+import { analyzeContent, scrapeReelUrl, getJobStatus } from '@/lib/api'
+import { Input } from '@/components/ui/input'
 import { formatNumber, formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
 import type { Reel } from '@/types'
@@ -33,6 +34,74 @@ export default function AnalysisPage() {
   const [currentReelIndex, setCurrentReelIndex] = useState(0)
   const [sortBy, setSortBy] = useState<'recent' | 'views'>('views')
   const [filterProfileId, setFilterProfileId] = useState<string | 'all'>('all')
+  const [reelUrlOpen, setReelUrlOpen] = useState(false)
+  const [reelUrl, setReelUrl] = useState('')
+  const [reelUrlStatus, setReelUrlStatus] = useState<'idle' | 'scraping' | 'analyzing' | 'success' | 'error'>('idle')
+  const [reelUrlProgress, setReelUrlProgress] = useState('')
+  const [reelUrlError, setReelUrlError] = useState<string | null>(null)
+
+  async function handleAnalyzeReelUrl() {
+    if (!reelUrl.trim()) return
+    setReelUrlStatus('scraping')
+    setReelUrlProgress('Extraindo dados do reel...')
+    setReelUrlError(null)
+
+    try {
+      // Step 1: Scrape the reel URL
+      const { job_id: scrapeJobId } = await scrapeReelUrl(reelUrl.trim())
+
+      // Poll scrape job
+      let reelId: string | null = null
+      let done = false
+      while (!done) {
+        await new Promise(r => setTimeout(r, 3000))
+        const job = await getJobStatus(scrapeJobId)
+        if (job.status === 'completed') {
+          reelId = (job.output_data as { reel_id?: string })?.reel_id ?? null
+          done = true
+        } else if (job.status === 'failed') {
+          throw new Error(job.error_message ?? 'Falha ao extrair reel')
+        }
+      }
+
+      if (!reelId) throw new Error('Reel ID não encontrado após scraping')
+
+      // Step 2: Analyze the reel
+      setReelUrlStatus('analyzing')
+      setReelUrlProgress('Analisando estrutura e edição...')
+
+      const { job_id: analyzeJobId } = await analyzeContent([reelId], modelProvider, modelId)
+
+      done = false
+      while (!done) {
+        await new Promise(r => setTimeout(r, 3000))
+        const job = await getJobStatus(analyzeJobId)
+        if (job.status === 'completed') {
+          done = true
+        } else if (job.status === 'failed') {
+          throw new Error(job.error_message ?? 'Falha na análise')
+        }
+      }
+
+      setReelUrlStatus('success')
+      setReelUrlProgress('Reel analisado com sucesso!')
+      refetch()
+
+      // Reset after delay
+      setTimeout(() => {
+        setReelUrlStatus('idle')
+        setReelUrlOpen(false)
+        setReelUrl('')
+        setReelUrlProgress('')
+        // Navigate to the analysis
+        navigate(`/analysis/${reelId}`)
+      }, 1500)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setReelUrlError(msg)
+      setReelUrlStatus('error')
+    }
+  }
 
   // Auto-load unanalyzed reels (top 10 per profile)
   useEffect(() => {
@@ -199,12 +268,97 @@ export default function AnalysisPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-foreground">Análises</h1>
-        <p className="text-sm text-muted-foreground">
-          Breakdown estrutural e de edição dos reels
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Análises</h1>
+          <p className="text-sm text-muted-foreground">
+            Breakdown estrutural e de edição dos reels
+          </p>
+        </div>
+        <Button
+          size="sm"
+          className="btn-gradient"
+          onClick={() => setReelUrlOpen(true)}
+        >
+          <Link className="size-3" />
+          Analisar reel avulso
+        </Button>
       </div>
+
+      {/* Analyze reel by URL */}
+      {reelUrlOpen && (
+        <Card>
+          <CardContent className="space-y-3 pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Link className="size-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">Analisar reel por link</span>
+              </div>
+              <Button variant="ghost" size="xs" onClick={() => { setReelUrlOpen(false); setReelUrlStatus('idle'); setReelUrlError(null) }}>
+                <X className="size-3" />
+              </Button>
+            </div>
+
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://www.instagram.com/reel/ABC123..."
+                value={reelUrl}
+                onChange={(e) => setReelUrl((e.target as HTMLInputElement).value)}
+                className="glass-input flex-1"
+                disabled={reelUrlStatus === 'scraping' || reelUrlStatus === 'analyzing'}
+              />
+              <Button
+                size="sm"
+                className="btn-gradient shrink-0"
+                onClick={handleAnalyzeReelUrl}
+                disabled={!reelUrl.trim() || reelUrlStatus === 'scraping' || reelUrlStatus === 'analyzing'}
+              >
+                {reelUrlStatus === 'idle' && (
+                  <>
+                    <Sparkles className="size-3" />
+                    Analisar
+                  </>
+                )}
+                {(reelUrlStatus === 'scraping' || reelUrlStatus === 'analyzing') && (
+                  <>
+                    <Loader2 className="size-3 animate-spin" />
+                    {reelUrlStatus === 'scraping' ? 'Extraindo...' : 'Analisando...'}
+                  </>
+                )}
+                {reelUrlStatus === 'success' && (
+                  <>
+                    <Check className="size-3" />
+                    Pronto!
+                  </>
+                )}
+                {reelUrlStatus === 'error' && (
+                  <>
+                    <X className="size-3" />
+                    Tentar novamente
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {reelUrlProgress && reelUrlStatus !== 'idle' && reelUrlStatus !== 'error' && (
+              <p className="text-xs text-[#60A5FA]">{reelUrlProgress}</p>
+            )}
+
+            {reelUrlError && (
+              <div className="flex items-start gap-1.5 rounded bg-[rgba(239,68,68,0.08)] px-2 py-1.5">
+                <AlertCircle className="mt-0.5 size-3 shrink-0 text-destructive" />
+                <p className="text-xs text-destructive">{reelUrlError}</p>
+              </div>
+            )}
+
+            <p className="text-[10px] text-muted-foreground">
+              Cole o link de qualquer Reel do Instagram. O vídeo será extraído, transcrito e analisado automaticamente.
+            </p>
+
+            <ModelSelector compact />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Unanalyzed reels card */}
       {loadingUnanalyzed ? (
