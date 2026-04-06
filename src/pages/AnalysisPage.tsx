@@ -1,0 +1,508 @@
+import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { BarChart3, Play, Loader2, Check, X, AlertCircle, Film, Sparkles, Eye } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { ModelSelector } from '@/components/shared/ModelSelector'
+import { useAnalysisList } from '@/hooks/useAnalysis'
+import { useProfiles } from '@/hooks/useProfiles'
+import { useAppStore } from '@/store'
+import { analyzeContent, getJobStatus } from '@/lib/api'
+import { formatNumber, formatDate } from '@/lib/utils'
+import supabase from '@/lib/supabase'
+import type { Reel } from '@/types'
+
+type AnalyzeStatus = 'idle' | 'starting' | 'processing' | 'success' | 'error'
+
+export default function AnalysisPage() {
+  const navigate = useNavigate()
+  const { analyses, loading, refetch } = useAnalysisList()
+  const { profiles } = useProfiles()
+  const user = useAppStore((s) => s.user)
+  const modelProvider = useAppStore((s) => s.modelProvider)
+  const modelId = useAppStore((s) => s.modelId)
+
+  const [unanalyzedReels, setUnanalyzedReels] = useState<Reel[]>([])
+  const [loadingUnanalyzed, setLoadingUnanalyzed] = useState(true)
+  const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>('idle')
+  const [analyzeProgress, setAnalyzeProgress] = useState(0)
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+  const [analyzingReelIds, setAnalyzingReelIds] = useState<string[]>([])
+  const [currentReelIndex, setCurrentReelIndex] = useState(0)
+  const [sortBy, setSortBy] = useState<'recent' | 'views'>('views')
+
+  // Auto-load unanalyzed reels (top 10 per profile)
+  useEffect(() => {
+    if (!user || profiles.length === 0) {
+      setLoadingUnanalyzed(false)
+      return
+    }
+
+    async function load() {
+      setLoadingUnanalyzed(true)
+
+      const [analysesResult] = await Promise.all([
+        supabase.from('content_analyses').select('reel_id'),
+      ])
+      const analyzedIds = new Set(
+        ((analysesResult.data ?? []) as { reel_id: string }[]).map((a) => a.reel_id)
+      )
+
+      // Fetch top 10 per profile
+      const allNotAnalyzed: Reel[] = []
+      for (const profile of profiles) {
+        const { data: reels } = await supabase
+          .from('reels')
+          .select('*')
+          .eq('profile_id', profile.id)
+          .order('engagement_score', { ascending: false })
+          .limit(10)
+
+        const notAnalyzed = ((reels ?? []) as Reel[]).filter(
+          (r) => !analyzedIds.has(r.id)
+        )
+        allNotAnalyzed.push(...notAnalyzed)
+      }
+
+      // Sort by engagement
+      allNotAnalyzed.sort((a, b) => b.engagement_score - a.engagement_score)
+      setUnanalyzedReels(allNotAnalyzed)
+      setLoadingUnanalyzed(false)
+    }
+
+    load()
+  }, [user, profiles, analyses.length])
+
+  async function handleAnalyze(candidateReelIds: string[]) {
+    if (candidateReelIds.length === 0) return
+    setAnalyzeError(null)
+    setAnalyzeStatus('starting')
+    setAnalyzeProgress(0)
+
+    try {
+      // Fresh check: exclude reels already analyzed
+      const { data: existing } = await supabase
+        .from('content_analyses')
+        .select('reel_id')
+        .in('reel_id', candidateReelIds)
+      const alreadyAnalyzed = new Set(
+        ((existing ?? []) as { reel_id: string }[]).map((a) => a.reel_id)
+      )
+      const reelIds = candidateReelIds.filter((id) => !alreadyAnalyzed.has(id))
+
+      if (reelIds.length === 0) {
+        setAnalyzeError('Todos esses reels já foram analisados')
+        setAnalyzeStatus('error')
+        setTimeout(() => setAnalyzeStatus('idle'), 4000)
+        return
+      }
+
+      setAnalyzingReelIds(reelIds)
+      setCurrentReelIndex(0)
+
+      const { job_id } = await analyzeContent(reelIds, modelProvider, modelId)
+      setAnalyzeStatus('processing')
+
+      // Poll job
+      let done = false
+      while (!done) {
+        await new Promise((r) => setTimeout(r, 3000))
+        try {
+          const job = await getJobStatus(job_id)
+          setAnalyzeProgress(job.progress)
+          // Estimate which reel is being processed
+          const estimatedIndex = Math.floor((job.progress / 100) * reelIds.length)
+          setCurrentReelIndex(Math.min(estimatedIndex, reelIds.length - 1))
+
+          if (job.status === 'completed') {
+            setAnalyzeStatus('success')
+            setAnalyzeProgress(100)
+            setCurrentReelIndex(reelIds.length)
+            refetch()
+            // Reload unanalyzed (top 10 per profile)
+            const { data: newAnalyses } = await supabase.from('content_analyses').select('reel_id')
+            const analyzedIds = new Set(((newAnalyses ?? []) as { reel_id: string }[]).map((a) => a.reel_id))
+            const allNotAnalyzed: Reel[] = []
+            for (const profile of profiles) {
+              const { data: reels } = await supabase.from('reels').select('*').eq('profile_id', profile.id).order('engagement_score', { ascending: false }).limit(10)
+              allNotAnalyzed.push(...((reels ?? []) as Reel[]).filter((r) => !analyzedIds.has(r.id)))
+            }
+            allNotAnalyzed.sort((a, b) => b.engagement_score - a.engagement_score)
+            setUnanalyzedReels(allNotAnalyzed)
+
+            setTimeout(() => { setAnalyzeStatus('idle'); setAnalyzingReelIds([]) }, 4000)
+            done = true
+          } else if (job.status === 'failed') {
+            setAnalyzeStatus('error')
+            setAnalyzeError(job.error_message ?? 'Falha na análise')
+            setTimeout(() => setAnalyzeStatus('idle'), 8000)
+            done = true
+          }
+        } catch {
+          // Continue polling
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setAnalyzeError(msg)
+      setAnalyzeStatus('error')
+      setTimeout(() => setAnalyzeStatus('idle'), 8000)
+    }
+  }
+
+  const sortedAnalyses = useMemo(() => {
+    const sorted = [...analyses]
+    if (sortBy === 'views') {
+      sorted.sort((a, b) => (b.reel?.views_count ?? 0) - (a.reel?.views_count ?? 0))
+    } else {
+      sorted.sort((a, b) => {
+        const dateA = a.reel?.posted_at ?? a.analyzed_at
+        const dateB = b.reel?.posted_at ?? b.analyzed_at
+        return new Date(dateB).getTime() - new Date(dateA).getTime()
+      })
+    }
+    return sorted
+  }, [analyses, sortBy])
+
+  const isAnalyzing = analyzeStatus === 'starting' || analyzeStatus === 'processing'
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold text-foreground">Análises</h1>
+        <p className="text-sm text-muted-foreground">
+          Breakdown estrutural e de edição dos reels
+        </p>
+      </div>
+
+      {/* Unanalyzed reels card */}
+      {loadingUnanalyzed ? (
+        <Card>
+          <CardContent className="flex items-center gap-3 pt-6">
+            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Carregando reels...</span>
+          </CardContent>
+        </Card>
+      ) : unanalyzedReels.length > 0 || isAnalyzing ? (
+        <Card>
+          <CardContent className="space-y-3 pt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">
+                {unanalyzedReels.length} reels sem análise
+                <span className="text-[10px] text-muted-foreground ml-1">(top 10 por perfil)</span>
+              </span>
+              <Button
+                size="sm"
+                className={cn(
+                  'transition-all duration-300',
+                  analyzeStatus === 'processing' && 'bg-primary/80',
+                  analyzeStatus === 'success' && 'bg-accent text-accent-foreground',
+                  analyzeStatus === 'error' && 'bg-destructive',
+                )}
+                onClick={() =>
+                  handleAnalyze(unanalyzedReels.slice(0, 10).map((r) => r.id))
+                }
+                disabled={isAnalyzing}
+              >
+                {analyzeStatus === 'idle' && (
+                  <>
+                    <Play className="size-3" />
+                    Analisar top 10
+                  </>
+                )}
+                {analyzeStatus === 'starting' && (
+                  <>
+                    <Loader2 className="size-3 animate-spin" />
+                    Iniciando...
+                  </>
+                )}
+                {analyzeStatus === 'processing' && (
+                  <>
+                    <Loader2 className="size-3 animate-spin" />
+                    Analisando {analyzeProgress}%
+                  </>
+                )}
+                {analyzeStatus === 'success' && (
+                  <>
+                    <Check className="size-3" />
+                    Concluído!
+                  </>
+                )}
+                {analyzeStatus === 'error' && (
+                  <>
+                    <X className="size-3" />
+                    Falhou — tentar novamente
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Progress bar */}
+            {isAnalyzing && (
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all duration-500 ease-out',
+                    analyzeStatus === 'starting' ? 'bg-primary/50 animate-pulse w-full' : 'bg-primary'
+                  )}
+                  style={analyzeStatus === 'processing' ? { width: `${Math.max(analyzeProgress, 3)}%` } : undefined}
+                />
+              </div>
+            )}
+
+            {/* Error */}
+            {analyzeError && analyzeStatus === 'error' && (
+              <div className="flex items-start gap-1.5 rounded bg-destructive/5 px-2 py-1.5">
+                <AlertCircle className="mt-0.5 size-3 shrink-0 text-destructive" />
+                <p className="text-xs text-destructive">{analyzeError}</p>
+              </div>
+            )}
+
+            {!isAnalyzing && <ModelSelector compact />}
+          </CardContent>
+        </Card>
+      ) : profiles.length > 0 && analyses.length === 0 ? (
+        <Card>
+          <CardContent className="py-6 text-center text-sm text-muted-foreground">
+            Todos os reels já foram analisados, ou não há reels processados ainda.
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Processing animation — always visible when analyzing */}
+      {isAnalyzing && analyzingReelIds.length > 0 && (
+        <Card className="border-primary/30 overflow-hidden">
+          {/* Animated top border */}
+          <div className="h-0.5 w-full bg-muted overflow-hidden">
+            <div className="h-full bg-primary animate-[shimmer_2s_ease-in-out_infinite]" style={{
+              width: '40%',
+              animation: 'shimmer 2s ease-in-out infinite',
+            }} />
+          </div>
+          <style>{`
+            @keyframes shimmer {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(350%); }
+            }
+          `}</style>
+
+          <CardContent className="space-y-3 pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                <Sparkles className="size-4 animate-pulse" />
+                Processando reel {Math.min(currentReelIndex + 1, analyzingReelIds.length)} de {analyzingReelIds.length}
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span>Pipeline:</span>
+                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20">
+                  Whisper
+                </Badge>
+                <span>→</span>
+                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20">
+                  Gemini
+                </Badge>
+                <span>→</span>
+                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20">
+                  {modelProvider === 'openai' ? 'GPT' : 'Gemini'}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              {analyzingReelIds.map((reelId, i) => {
+                const reel = unanalyzedReels.find((r) => r.id === reelId)
+                const isDone = i < currentReelIndex
+                const isCurrent = i === currentReelIndex
+                const isPending = i > currentReelIndex
+
+                return (
+                  <div
+                    key={reelId}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 transition-all duration-500',
+                      isCurrent && 'bg-primary/10 ring-1 ring-primary/20 scale-[1.01]',
+                      isDone && 'opacity-50',
+                      isPending && 'opacity-40',
+                    )}
+                  >
+                    {/* Status icon */}
+                    <div className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border">
+                      {isDone && (
+                        <div className="flex size-6 items-center justify-center rounded-full bg-accent/20">
+                          <Check className="size-3 text-accent" />
+                        </div>
+                      )}
+                      {isCurrent && (
+                        <div className="flex size-6 items-center justify-center rounded-full bg-primary/20">
+                          <Loader2 className="size-3 animate-spin text-primary" />
+                        </div>
+                      )}
+                      {isPending && (
+                        <span className="text-[9px] text-muted-foreground">{i + 1}</span>
+                      )}
+                    </div>
+
+                    {/* Reel info */}
+                    <div className="min-w-0 flex-1">
+                      <p className={cn(
+                        'truncate text-xs',
+                        isCurrent ? 'text-foreground font-medium' : 'text-muted-foreground',
+                      )}>
+                        {reel?.caption?.split('\n')[0]?.slice(0, 70) ?? `Reel ${i + 1}`}
+                      </p>
+                      {isCurrent && (
+                        <p className="text-[10px] text-primary animate-pulse">
+                          Transcrevendo e analisando estrutura...
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Status badge */}
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        'shrink-0 text-[9px] px-1.5 py-0 h-4',
+                        isDone && 'bg-accent/10 text-accent border-accent/20',
+                        isCurrent && 'bg-primary/10 text-primary border-primary/20 animate-pulse',
+                        isPending && 'bg-muted text-muted-foreground',
+                      )}
+                    >
+                      {isDone && 'concluído'}
+                      {isCurrent && 'analisando'}
+                      {isPending && 'na fila'}
+                    </Badge>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Success animation */}
+      {analyzeStatus === 'success' && (
+        <Card className="border-accent/30 bg-accent/5">
+          <CardContent className="flex items-center gap-3 pt-6">
+            <div className="flex size-8 items-center justify-center rounded-full bg-accent/20">
+              <Check className="size-4 text-accent" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-accent">Análise concluída!</p>
+              <p className="text-xs text-muted-foreground">
+                {analyzingReelIds.length} reels analisados com sucesso
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sort + Analyses grid */}
+      {analyses.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 py-16">
+          <BarChart3 className="size-10 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Nenhuma análise concluída</p>
+          <p className="text-xs text-muted-foreground">
+            {unanalyzedReels.length > 0
+              ? 'Clique em "Analisar top 10" acima para começar'
+              : 'Processe perfis primeiro para ter reels disponíveis'}
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {analyses.length} {analyses.length === 1 ? 'reel analisado' : 'reels analisados'}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Ordenar:</span>
+              <Button
+                variant={sortBy === 'views' ? 'default' : 'outline'}
+                size="xs"
+                onClick={() => setSortBy('views')}
+              >
+                <Eye className="size-3" />
+                Mais vistos
+              </Button>
+              <Button
+                variant={sortBy === 'recent' ? 'default' : 'outline'}
+                size="xs"
+                onClick={() => setSortBy('recent')}
+              >
+                Mais recentes
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {sortedAnalyses.map((analysis) => (
+              <Card
+                key={analysis.id}
+                className="cursor-pointer transition-colors hover:border-primary/40"
+                onClick={() => navigate(`/analysis/${analysis.reel_id}`)}
+              >
+                <CardContent className="space-y-3 pt-4">
+                  <div className="flex gap-3">
+                    <div className="size-16 shrink-0 rounded-lg bg-muted" />
+                    <div className="min-w-0 flex-1">
+                      {analysis.reel?.profile?.instagram_username && (
+                        <p className="text-sm font-bold text-foreground">
+                          @{analysis.reel.profile.instagram_username}
+                        </p>
+                      )}
+                      <p className="line-clamp-2 text-xs text-muted-foreground">
+                        {analysis.reel?.caption ?? 'Sem legenda'}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <Badge className="bg-yellow-500/20 text-yellow-400 text-[10px]">
+                          <Eye className="mr-0.5 size-2.5" />
+                          {formatNumber(analysis.reel?.views_count ?? 0)} views
+                        </Badge>
+                        {analysis.reel?.posted_at && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatDate(analysis.reel.posted_at)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1">
+                    <div className="rounded bg-red-500/10 px-2 py-1 text-center">
+                      <p className="text-[10px] text-red-400">Hook</p>
+                      <p className="text-xs font-medium text-foreground">
+                        {analysis.hook.type}
+                      </p>
+                    </div>
+                    <div className="rounded bg-blue-500/10 px-2 py-1 text-center">
+                      <p className="text-[10px] text-blue-400">Técnica</p>
+                      <p className="truncate text-xs font-medium text-foreground">
+                        {analysis.development.storytelling_technique}
+                      </p>
+                    </div>
+                    <div className="rounded bg-green-500/10 px-2 py-1 text-center">
+                      <p className="text-[10px] text-green-400">CTA</p>
+                      <p className="text-xs font-medium text-foreground">
+                        {analysis.cta.type}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

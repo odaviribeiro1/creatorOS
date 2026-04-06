@@ -1,0 +1,127 @@
+import { NavLink } from 'react-router-dom'
+import {
+  Zap,
+  LayoutDashboard,
+  Users,
+  BarChart3,
+  Mic,
+  FileText,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+
+const navItems = [
+  { to: '/' as const, icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { to: '/profiles' as const, icon: Users, label: 'Perfis', end: false },
+  { to: '/analysis' as const, icon: BarChart3, label: 'Análises', end: false },
+  { to: '/voice-profile' as const, icon: Mic, label: 'Voice Profile', end: false },
+  { to: '/scripts' as const, icon: FileText, label: 'Roteiros', end: false },
+  { to: '/settings' as const, icon: Settings, label: 'Configurações', end: false },
+]
+
+interface SidebarProps {
+  collapsed: boolean
+  onToggle: () => void
+}
+
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const activeJobs = useAppStore((s) => s.activeJobs)
+  const activeCount = activeJobs.filter(
+    (j) => j.status === 'pending' || j.status === 'processing'
+  ).length
+
+  return (
+    <aside
+      className={cn(
+        'fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border bg-card transition-all duration-200',
+        collapsed ? 'w-16' : 'w-60'
+      )}
+    >
+      {/* Brand */}
+      <div className="flex h-16 items-center gap-2 border-b border-border px-4">
+        <Zap className="h-6 w-6 shrink-0 text-primary" />
+        {!collapsed && (
+          <span className="truncate text-sm font-bold tracking-tight text-foreground">
+            ViralScript AI
+          </span>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const link = (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )
+              }
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              {!collapsed && <span className="truncate">{item.label}</span>}
+            </NavLink>
+          )
+
+          if (collapsed) {
+            return (
+              <Tooltip key={item.to}>
+                <TooltipTrigger>{link}</TooltipTrigger>
+                <TooltipContent side="right">{item.label}</TooltipContent>
+              </Tooltip>
+            )
+          }
+
+          return link
+        })}
+      </nav>
+
+      {/* Active jobs indicator */}
+      {activeCount > 0 && (
+        <div
+          className={cn(
+            'mx-2 mb-2 flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2',
+            collapsed && 'justify-center px-0'
+          )}
+        >
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+          </span>
+          {!collapsed && (
+            <span className="text-xs text-muted-foreground">
+              {activeCount} job{activeCount > 1 ? 's' : ''} ativo{activeCount > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Toggle button */}
+      <button
+        onClick={onToggle}
+        className="flex h-12 items-center justify-center border-t border-border text-muted-foreground transition-colors hover:text-foreground"
+      >
+        {collapsed ? (
+          <ChevronRight className="h-4 w-4" />
+        ) : (
+          <ChevronLeft className="h-4 w-4" />
+        )}
+      </button>
+    </aside>
+  )
+}

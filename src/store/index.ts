@@ -1,0 +1,77 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import type { User } from '@supabase/supabase-js'
+import type { Profile, ProcessingJob, ModelProvider } from '@/types'
+
+interface AppState {
+  // Auth
+  user: User | null
+  setUser: (user: User | null) => void
+
+  // Auth loading
+  authLoading: boolean
+  setAuthLoading: (loading: boolean) => void
+
+  // Profiles
+  profiles: Profile[]
+  setProfiles: (profiles: Profile[]) => void
+  addProfile: (profile: Profile) => void
+
+  // Active jobs (from Supabase Realtime)
+  activeJobs: ProcessingJob[]
+  setActiveJobs: (jobs: ProcessingJob[]) => void
+  updateJob: (job: ProcessingJob) => void
+
+  // Model preference
+  modelProvider: ModelProvider
+  modelId: string
+  setModel: (provider: ModelProvider, modelId: string) => void
+}
+
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      // Auth
+      user: null,
+      setUser: (user) => set({ user }),
+
+      // Auth loading
+      authLoading: true,
+      setAuthLoading: (authLoading) => set({ authLoading }),
+
+      // Profiles
+      profiles: [],
+      setProfiles: (profiles) => set({ profiles }),
+      addProfile: (profile) =>
+        set((state) => ({ profiles: [...state.profiles, profile] })),
+
+      // Active jobs
+      activeJobs: [],
+      setActiveJobs: (activeJobs) => set({ activeJobs }),
+      updateJob: (job) =>
+        set((state) => {
+          const exists = state.activeJobs.some((j) => j.id === job.id)
+          if (exists) {
+            return {
+              activeJobs: state.activeJobs.map((j) =>
+                j.id === job.id ? job : j
+              ),
+            }
+          }
+          return { activeJobs: [...state.activeJobs, job] }
+        }),
+
+      // Model preference
+      modelProvider: 'openai',
+      modelId: 'gpt-4o',
+      setModel: (modelProvider, modelId) => set({ modelProvider, modelId }),
+    }),
+    {
+      name: 'viralscript-settings',
+      partialize: (state) => ({
+        modelProvider: state.modelProvider,
+        modelId: state.modelId,
+      }),
+    }
+  )
+)
