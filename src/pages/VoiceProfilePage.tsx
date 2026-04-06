@@ -13,9 +13,8 @@ import supabase from '@/lib/supabase'
 import type { Reel } from '@/types'
 
 export default function VoiceProfilePage() {
-  const { voiceProfile, loading, refetch } = useVoiceProfile()
+  const { voiceProfile, loading } = useVoiceProfile()
   const { profiles } = useProfiles()
-  const user = useAppStore((s) => s.user)
   const activeJobs = useAppStore((s) => s.activeJobs)
 
   const [ownReels, setOwnReels] = useState<Reel[]>([])

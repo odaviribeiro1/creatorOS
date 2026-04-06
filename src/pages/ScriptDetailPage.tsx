@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useScript } from '@/hooks/useScripts'
-import { formatDate, formatDuration } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
@@ -185,45 +185,45 @@ export default function ScriptDetailPage() {
 
         <TabsContent value="editing" className="mt-4 space-y-4">
           {/* General info */}
-          {editingReport.total_duration_estimate && (
+          {editingReport.total_duration_estimate ? (
             <Card>
               <CardContent className="flex flex-wrap gap-4 pt-4">
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground">Duração</p>
                   <p className="text-sm text-foreground">
-                    {editingReport.total_duration_estimate as string}
+                    {String(editingReport.total_duration_estimate)}
                   </p>
                 </div>
-                {editingReport.color_grading && (
+                {editingReport.color_grading ? (
                   <div>
                     <p className="text-[10px] uppercase text-muted-foreground">Color Grading</p>
                     <p className="text-sm text-foreground">
-                      {editingReport.color_grading as string}
+                      {String(editingReport.color_grading)}
                     </p>
                   </div>
-                )}
-                {editingReport.aspect_ratio && (
+                ) : null}
+                {editingReport.aspect_ratio ? (
                   <div>
                     <p className="text-[10px] uppercase text-muted-foreground">Aspecto</p>
                     <p className="text-sm text-foreground">
-                      {editingReport.aspect_ratio as string}
+                      {String(editingReport.aspect_ratio)}
                     </p>
                   </div>
-                )}
-                {editingReport.captions_style && (
+                ) : null}
+                {editingReport.captions_style ? (
                   <div>
                     <p className="text-[10px] uppercase text-muted-foreground">Legendas</p>
                     <p className="text-sm text-foreground">
-                      {editingReport.captions_style as string}
+                      {String(editingReport.captions_style)}
                     </p>
                   </div>
-                )}
+                ) : null}
               </CardContent>
             </Card>
-          )}
+          ) : null}
 
           {/* Music recommendation */}
-          {editingReport.music_recommendation && (
+          {editingReport.music_recommendation ? (
             <Card>
               <CardContent className="space-y-2 pt-4">
                 <h3 className="text-sm font-semibold text-foreground">Música</h3>
@@ -231,24 +231,24 @@ export default function ScriptDetailPage() {
                   const music = editingReport.music_recommendation as Record<string, unknown>
                   return (
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {music.mood && (
+                      {music.mood ? (
                         <div>
                           <p className="text-[10px] text-muted-foreground">Mood</p>
-                          <p className="text-xs text-foreground">{music.mood as string}</p>
+                          <p className="text-xs text-foreground">{String(music.mood)}</p>
                         </div>
-                      )}
-                      {music.genre && (
+                      ) : null}
+                      {music.genre ? (
                         <div>
                           <p className="text-[10px] text-muted-foreground">Gênero</p>
-                          <p className="text-xs text-foreground">{music.genre as string}</p>
+                          <p className="text-xs text-foreground">{String(music.genre)}</p>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   )
                 })()}
               </CardContent>
             </Card>
-          )}
+          ) : null}
 
           {/* Editing instructions timeline */}
           {editingInstructions.length > 0 && (
@@ -264,7 +264,7 @@ export default function ScriptDetailPage() {
                   >
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="font-mono text-[10px]">
-                        {instruction.timestamp as string}
+                        {String(instruction.timestamp)}
                       </Badge>
                       <Badge
                         className={
@@ -275,33 +275,33 @@ export default function ScriptDetailPage() {
                               : 'bg-blue-500/20 text-blue-400'
                         }
                       >
-                        {instruction.section as string}
+                        {String(instruction.section)}
                       </Badge>
                     </div>
-                    {instruction.visual && (
+                    {instruction.visual ? (
                       <p className="text-xs">
                         <span className="text-muted-foreground">Visual: </span>
-                        <span className="text-foreground">{instruction.visual as string}</span>
+                        <span className="text-foreground">{String(instruction.visual)}</span>
                       </p>
-                    )}
-                    {instruction.text_overlay && (
+                    ) : null}
+                    {instruction.text_overlay ? (
                       <p className="text-xs">
                         <span className="text-muted-foreground">Texto: </span>
-                        <span className="text-foreground">{instruction.text_overlay as string}</span>
+                        <span className="text-foreground">{String(instruction.text_overlay)}</span>
                       </p>
-                    )}
-                    {instruction.audio && (
+                    ) : null}
+                    {instruction.audio ? (
                       <p className="text-xs">
                         <span className="text-muted-foreground">Áudio: </span>
-                        <span className="text-foreground">{instruction.audio as string}</span>
+                        <span className="text-foreground">{String(instruction.audio)}</span>
                       </p>
-                    )}
-                    {instruction.transitions && (
+                    ) : null}
+                    {instruction.transitions ? (
                       <p className="text-xs">
                         <span className="text-muted-foreground">Transições: </span>
-                        <span className="text-foreground">{instruction.transitions as string}</span>
+                        <span className="text-foreground">{String(instruction.transitions)}</span>
                       </p>
-                    )}
+                    ) : null}
                     {Array.isArray(instruction.broll_suggestions) && (
                       <div className="text-xs">
                         <span className="text-muted-foreground">B-Roll: </span>

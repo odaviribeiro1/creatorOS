@@ -98,21 +98,21 @@ export function StructureTimeline({ analysis, onSeek }: StructureTimelineProps) 
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {data.text}
               </p>
-              {section.key === 'hook' && 'type' in data && (
+              {section.key === 'hook' && 'effectiveness_score' in data && (
                 <p className="text-[10px] text-muted-foreground">
-                  Tipo: <span className="text-foreground">{data.type}</span>
-                  {' · '}Eficácia: <span className="text-accent">{data.effectiveness_score}/10</span>
+                  Tipo: <span className="text-foreground">{(data as { type: string }).type}</span>
+                  {' · '}Eficácia: <span className="text-accent">{(data as { effectiveness_score: number }).effectiveness_score}/10</span>
                 </p>
               )}
               {section.key === 'development' && 'storytelling_technique' in data && (
                 <p className="text-[10px] text-muted-foreground">
-                  Técnica: <span className="text-foreground">{data.storytelling_technique}</span>
+                  Técnica: <span className="text-foreground">{(data as { storytelling_technique: string }).storytelling_technique}</span>
                 </p>
               )}
-              {section.key === 'cta' && 'type' in data && (
+              {section.key === 'cta' && 'strength_score' in data && (
                 <p className="text-[10px] text-muted-foreground">
-                  Tipo: <span className="text-foreground">{data.type}</span>
-                  {' · '}Força: <span className="text-accent">{data.strength_score}/10</span>
+                  Tipo: <span className="text-foreground">{(data as { type: string }).type}</span>
+                  {' · '}Força: <span className="text-accent">{(data as { strength_score: number }).strength_score}/10</span>
                 </p>
               )}
             </div>

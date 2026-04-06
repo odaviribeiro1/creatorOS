@@ -92,8 +92,8 @@ export function EditingElementsMap({ analysis, onSeek }: EditingElementsMapProps
                   >
                     <span className="mt-0.5 shrink-0 text-[10px] font-mono text-muted-foreground">
                       {formatDuration(item.time)}
-                      {'endTime' in item && item.endTime
-                        ? ` - ${formatDuration(item.endTime)}`
+                      {'endTime' in item && typeof item.endTime === 'number'
+                        ? ` - ${formatDuration(item.endTime as number)}`
                         : ''}
                     </span>
                     <span className="flex-1 text-xs">

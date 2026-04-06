@@ -1,6 +1,5 @@
 import { useAppStore } from '@/store'
 import { MODEL_OPTIONS } from '@/types'
-import type { ModelProvider } from '@/types'
 import { Badge } from '@/components/ui/badge'
 
 interface ModelSelectorProps {

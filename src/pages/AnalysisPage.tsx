@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, Play, Loader2, Check, X, AlertCircle, Film, Sparkles, Eye } from 'lucide-react'
+import { BarChart3, Play, Loader2, Check, X, AlertCircle, Sparkles, Eye } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
