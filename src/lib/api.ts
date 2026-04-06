@@ -45,12 +45,31 @@ export async function scrapeReelUrl(
   reelUrl: string
 ): Promise<{ job_id: string }> {
   const user_id = await getUserId();
-  const { data, error } = await supabase.functions.invoke('scrape-reel-url', {
-    body: { reel_url: reelUrl, user_id },
-  });
 
-  if (error) throw new Error(`Failed to start reel scrape: ${error.message}`);
-  if (data?.error) throw new Error(data.error);
+  // Use fetch directly for better error messages from edge function
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? supabaseKey;
+
+  const response = await fetch(
+    `${supabaseUrl}/functions/v1/scrape-reel-url`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': supabaseKey,
+      },
+      body: JSON.stringify({ reel_url: reelUrl, user_id }),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok || data?.error) {
+    throw new Error(data?.error ?? `Erro ${response.status}`);
+  }
 
   return data as { job_id: string };
 }
