@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
+import { APP_NAME } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 
 const pageTitles: Record<string, string> = {
@@ -22,7 +23,7 @@ function getPageTitle(pathname: string): string {
   if (/^\/profiles\/[^/]+\/reels$/.test(pathname)) return 'Reels do Perfil'
   if (/^\/scripts\/[^/]+$/.test(pathname)) return 'Roteiro'
 
-  return 'Creator OS'
+  return APP_NAME
 }
 
 export function MainLayout() {

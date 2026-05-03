@@ -8,6 +8,7 @@ import { ReelCard } from '@/components/reels/ReelCard'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useAppStore } from '@/store'
 import { formatNumber } from '@/lib/utils'
+import { APP_NAME } from '@/lib/brand'
 import supabase from '@/lib/supabase'
 import type { Reel } from '@/types'
 
@@ -92,7 +93,7 @@ export default function DashboardPage() {
         <div className="rounded-full bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] p-6">
           <Zap className="size-12 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold text-foreground">Bem-vindo ao Creator OS</h2>
+        <h2 className="text-2xl font-bold text-foreground">{`Bem-vindo ao ${APP_NAME}`}</h2>
         <p className="max-w-md text-center text-muted-foreground">
           Comece adicionando perfis do Instagram para extrair e analisar
           conteúdos virais.
