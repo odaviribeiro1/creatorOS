@@ -6,6 +6,9 @@ Versionamento [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Known issues / débitos
+- Bundle principal (`dist/assets/index-*.js`) acima de 500 kB após minificação (~734 kB / gzip 214 kB). Não é bloqueante para `v1.0.0` — Vite/Rolldown apenas avisa. Sugestão de melhoria: code-splitting via dynamic `import()` em rotas pesadas (`TeleprompterPage`, `AnalysisPage`, `ReelAnalysisPage`). Identificado durante o smoke test (Caso 12), em `migration/SMOKE_TEST_RESULTS.md`.
+
 ## [1.0.0] — 2026-05-02
 
 Primeira release pública self-hosted. Migração concluída de produto interno (SaaS-like) para boilerplate Open Source distribuível.
