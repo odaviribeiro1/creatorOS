@@ -1,10 +1,11 @@
-import { Settings, Key, Brain } from 'lucide-react'
+import { Settings, Key, Brain, ShieldCheck } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ModelSelector } from '@/components/shared/ModelSelector'
 import { useAppStore } from '@/store'
+import { useAppUser } from '@/hooks/useAppUser'
 
 interface ApiKeyField {
   key: string
@@ -36,6 +37,7 @@ const API_KEYS: ApiKeyField[] = [
 
 export default function SettingsPage() {
   const user = useAppStore((s) => s.user)
+  const { isAdmin, appUser } = useAppUser()
 
   return (
     <div className="space-y-6">
@@ -128,6 +130,39 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Admin-only section */}
+      {isAdmin && (
+        <Card>
+          <CardContent className="space-y-3 pt-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="size-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">
+                Administração
+              </h3>
+              <Badge
+                variant="secondary"
+                className="text-[10px] border border-[rgba(59,130,246,0.2)]"
+              >
+                {appUser?.role ?? 'admin'}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Você tem permissões de administrador nesta instância. O
+              gerenciamento de usuários (listar, promover, remover) será
+              disponibilizado em uma versão futura. Por enquanto, edite a
+              tabela{' '}
+              <span className="font-mono text-[#60A5FA]">app_users</span> via
+              SQL no painel do Supabase.
+            </p>
+            <div className="rounded-xl bg-[rgba(59,130,246,0.05)] border border-[rgba(59,130,246,0.15)] p-3">
+              <p className="font-mono text-[11px] text-[#CBD5E1]">
+                UPDATE app_users SET role = 'admin' WHERE user_id = '&lt;uuid&gt;';
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
