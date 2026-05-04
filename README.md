@@ -33,93 +33,51 @@ Detalhes em [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## 🚀 Como rodar (passo a passo)
 
-Este é um projeto open source self-hosted. Siga estes 6 passos para ter sua instância rodando em produção em ~30 minutos. **Não é necessário editar código.**
+Este projeto é self-hosted. Cada usuário roda própria instância em Supabase + Vercel. Setup completo em ~15 minutos.
 
-### 1. Crie um projeto no Supabase
+### Caminho recomendado: setup interativo via Claude Code
 
-1. Acesse [supabase.com](https://supabase.com) e crie um novo projeto.
-2. Escolha região (ex: `South America - São Paulo`), defina senha do banco e plano Free.
-3. Aguarde o provisionamento (~2 minutos).
-4. Anote: **Project URL** e **anon public key** (Settings → API). Você vai usar nos passos 5 e 4.
+Se você tem [Claude Code](https://claude.com/claude-code) instalado, esse é o caminho mais simples — Claude Code te pergunta cada credencial, valida tudo, e configura sua instância sozinho.
 
-### 2. Faça fork deste repositório e aplique as migrations
+1. Crie um projeto novo no Supabase em https://supabase.com/dashboard.
+2. Faça fork deste repositório no GitHub.
+3. Clone o seu fork localmente: `git clone https://github.com/<seu-usuario>/creator-os.git`.
+4. Entre na pasta: `cd creator-os`.
+5. Abra Claude Code: `claude`.
+6. Abra o arquivo [`BOOTSTRAP.md`](./BOOTSTRAP.md), copie tudo a partir da linha "Prompt para Claude Code", e cole na sessão.
+7. Responda às perguntas — Claude Code aplica as 3 migrations, deploya as 6 Edge Functions, configura as secrets e cria seu admin.
+8. Quando terminar, faça deploy do frontend na Vercel preenchendo `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (Claude Code te lembra desses valores no final).
+9. Acesse a URL gerada pela Vercel e faça login com o admin criado.
 
-1. Clique em **Fork** no topo desta página para criar sua cópia.
-2. No Supabase Dashboard do seu projeto, vá em **Database → Migrations**.
-3. Conecte sua conta GitHub e selecione o fork — o Supabase vai detectar automaticamente os arquivos em `supabase/migrations/` e aplicá-los.
-4. Confirme no SQL Editor que as tabelas (`profiles`, `reels`, `transcriptions`, `content_analyses`, `voice_profiles`, `scripts`, `script_versions`, `processing_jobs`, `app_users`) foram criadas.
+Veja [`BOOTSTRAP.md`](./BOOTSTRAP.md) para detalhes.
 
-> Alternativa via CLI (modo dev): `supabase link --project-ref <ref>` + `supabase db push`. Veja a seção [Modo dev](#-modo-dev-avançado).
+### Caminho manual (sem Claude Code)
 
-### 3. Configure as Secrets das Edge Functions
-
-No Supabase Dashboard do seu projeto:
-
-1. Vá em **Project Settings → Edge Functions → Secrets**.
-2. Adicione cada uma das secrets abaixo:
-
-| Secret | Onde obter | Para que serve |
-|---|---|---|
-| `APIFY_TOKEN` | https://console.apify.com/account/integrations | Scraping de Reels e perfis do Instagram. |
-| `OPENAI_API_KEY` | https://platform.openai.com/api-keys | Whisper (transcrição de áudio) + GPT (análise estrutural e geração de roteiros). |
-| `GEMINI_API_KEY` | https://aistudio.google.com/app/apikey | Análise visual de vídeo (transições, b-rolls, texto na tela). |
-
-> `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já são auto-injetadas pelo runtime das Edge Functions — não precisa criá-las.
-
-### 4. Configure auto-deploy de Edge Functions via GitHub Actions
-
-No seu fork no GitHub:
-
-1. Vá em **Settings → Secrets and variables → Actions**.
-2. Clique em **New repository secret** e adicione duas secrets:
-   - `SUPABASE_ACCESS_TOKEN` — gere em https://supabase.com/dashboard/account/tokens (Personal Access Token).
-   - `SUPABASE_PROJECT_REF` — encontre em **Supabase Dashboard → Project Settings → General → Reference ID**.
-3. Vá na aba **Actions** do seu fork e clique em **I understand my workflows, go ahead and enable them** se solicitado.
-4. Clique em **"Deploy Supabase Edge Functions"** → **"Run workflow"** → **"Run workflow"** (botão verde).
-5. Aguarde a conclusão (~2 minutos). Todas as 6 Edge Functions serão deployadas.
-
-A partir daqui, qualquer push em `main` que altere arquivos em `supabase/functions/**` redeploya automaticamente as funções.
-
-### 5. Deploy do frontend na Vercel
-
-1. Acesse [vercel.com/new](https://vercel.com/new) e selecione **Import Git Repository**.
-2. Escolha seu fork.
-3. Na tela de configuração, expanda **Environment Variables** e preencha:
-   - `VITE_SUPABASE_URL` — cole a Project URL do passo 1.
-   - `VITE_SUPABASE_ANON_KEY` — cole a anon key do passo 1.
-   - `VITE_APP_NAME` (opcional) — nome da marca exibido na UI. Default: `Creator OS`.
-4. Clique em **Deploy** e aguarde (~2 minutos).
-5. Anote a URL gerada (ex: `seu-projeto.vercel.app`).
-
-### 6. Crie sua conta de administrador
-
-1. Acesse a URL gerada pela Vercel.
-2. Clique em **Cadastrar** e crie sua conta com email e senha.
-3. **O primeiro usuário cadastrado vira admin automaticamente** (trigger `on_auth_user_created` na migration `20260502000000_app_users_and_roles.sql`).
-4. Pronto — você está dentro do dashboard.
-
----
-
-## 🛠️ Modo dev (avançado)
-
-Para desenvolvimento local com hot reload:
+Se prefere fazer tudo no terminal:
 
 ```bash
 git clone https://github.com/<seu-usuario>/creator-os.git
 cd creator-os
 cp .env.example .env
-# Edite .env preenchendo VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
+# Edite .env preenchendo VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY,
+# SUPABASE_ACCESS_TOKEN e SUPABASE_PROJECT_REF (veja comentários no arquivo)
 npm install
-npm run dev
+
+# Aplicar migrations
+supabase link --project-ref <seu-project-ref>
+supabase db push
+
+# Deploy das 6 Edge Functions
+for fn in scrape-profiles scrape-reel-url analyze-content generate-voice-profile generate-script job-status; do
+  supabase functions deploy "$fn" --project-ref <seu-project-ref> --no-verify-jwt
+done
 ```
 
-Ferramentas úteis para desenvolvedores (alternativas ao caminho gráfico):
+Configure as secrets das Edge Functions manualmente em **Supabase Dashboard → Project Settings → Edge Functions → Secrets** (lista no `.env.example` grupo "Edge Functions Secrets": `APIFY_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
 
-- **Aplicar migrations via CLI** — `supabase link --project-ref <ref>` seguido de `supabase db push`. Alternativa ao passo 2.
-- **Deploy de Edge Function individual** — `supabase functions deploy <nome> --project-ref <ref>`. Alternativa ao passo 4.
-- **Logs em tempo real** — `supabase functions logs <nome> --follow`.
+Crie sua conta admin acessando a aplicação localmente (`npm run dev`) ou após deploy na Vercel — o primeiro usuário que se cadastrar vira admin automaticamente (trigger `on_auth_user_created` na migration `20260502000000_app_users_and_roles.sql`).
 
-Esses comandos requerem [Supabase CLI](https://supabase.com/docs/guides/cli) instalado e `SUPABASE_ACCESS_TOKEN` exportado.
+Para deploy do frontend na Vercel, acesse [vercel.com/new](https://vercel.com/new), importe seu fork e preencha `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` na tela de Environment Variables.
 
 ---
 
@@ -197,11 +155,13 @@ Volte ao passo 3 e confirme que cada secret foi adicionada corretamente em **Sup
 
 ---
 
-## Architecture deep-dive
+## 📚 Documentação adicional
 
-Para detalhes de modelo de dados, fluxo do pipeline, prompts usados nas chamadas a LLMs, padrão async de jobs e limitações conhecidas, leia [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-
-Para visão técnica completa (mantida para referência interna do desenvolvimento com Claude Code), veja [`.claude/CLAUDE.md`](./.claude/CLAUDE.md).
+- [`BOOTSTRAP.md`](./BOOTSTRAP.md) — setup interativo via Claude Code (caminho recomendado).
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — modelo de dados, fluxo do pipeline, prompts usados nas chamadas a LLMs, padrão async de jobs e limitações conhecidas.
+- [`CHANGELOG.md`](./CHANGELOG.md) — histórico de versões.
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — como contribuir.
+- [`.claude/CLAUDE.md`](./.claude/CLAUDE.md) — visão técnica completa (referência interna para desenvolvimento com Claude Code).
 
 ---
 

@@ -64,3 +64,8 @@ dist-ssr
 # Claude Code — settings locais (podem conter PATs em allow-list)
 # =====================================================================
 .claude/settings.local.json
+
+# =====================================================================
+# Arquivo local de rotação de credenciais — não commitar
+# =====================================================================
+ROTATION_CHECKLIST.md
