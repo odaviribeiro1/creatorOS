@@ -624,8 +624,20 @@ serve(async (req: Request) => {
     const openaiKey = Deno.env.get('OPENAI_API_KEY')
     const geminiKey = Deno.env.get('GEMINI_API_KEY')
 
-    if (!supabaseUrl || !supabaseServiceKey || !openaiKey || !geminiKey) {
-      throw new Error('Missing required environment variables (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY, GEMINI_API_KEY)')
+    const missing: string[] = []
+    if (!supabaseUrl) missing.push('SUPABASE_URL')
+    if (!supabaseServiceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY')
+    if (!openaiKey) missing.push('OPENAI_API_KEY')
+    if (!geminiKey) missing.push('GEMINI_API_KEY')
+    if (missing.length > 0) {
+      return new Response(
+        JSON.stringify({
+          error: `Secrets ausentes: ${missing.join(', ')}.`,
+          instrucao: 'Configure em Supabase Dashboard → Project Settings → Edge Functions → Secrets.',
+          docs: 'Ver README.md, seção "Configure as Secrets das Edge Functions".',
+        }),
+        { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+      )
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)

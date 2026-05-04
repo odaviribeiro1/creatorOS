@@ -24,8 +24,18 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing required environment variables')
+    const missing: string[] = []
+    if (!supabaseUrl) missing.push('SUPABASE_URL')
+    if (!supabaseServiceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY')
+    if (missing.length > 0) {
+      return new Response(
+        JSON.stringify({
+          error: `Secrets ausentes: ${missing.join(', ')}.`,
+          instrucao: 'Configure em Supabase Dashboard → Project Settings → Edge Functions → Secrets.',
+          docs: 'Ver README.md, seção "Configure as Secrets das Edge Functions".',
+        }),
+        { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+      )
     }
 
     const url = new URL(req.url)
