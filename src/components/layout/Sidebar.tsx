@@ -11,6 +11,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { APP_NAME } from '@/lib/brand'
 import { useAppStore } from '@/store'
 import {
   Tooltip,
@@ -50,7 +51,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <Zap className="h-6 w-6 shrink-0 text-primary" />
         {!collapsed && (
           <span className="truncate text-sm font-bold tracking-tight text-foreground">
-            Creator OS
+            {APP_NAME}
           </span>
         )}
       </div>

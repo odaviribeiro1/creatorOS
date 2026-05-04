@@ -2,11 +2,16 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User } from '@supabase/supabase-js'
 import type { Profile, ProcessingJob, ModelProvider } from '@/types'
+import type { AppUser } from '@/types/auth'
 
 interface AppState {
   // Auth
   user: User | null
   setUser: (user: User | null) => void
+
+  // App user (role)
+  appUser: AppUser | null
+  setAppUser: (appUser: AppUser | null) => void
 
   // Auth loading
   authLoading: boolean
@@ -34,6 +39,10 @@ export const useAppStore = create<AppState>()(
       // Auth
       user: null,
       setUser: (user) => set({ user }),
+
+      // App user (role)
+      appUser: null,
+      setAppUser: (appUser) => set({ appUser }),
 
       // Auth loading
       authLoading: true,

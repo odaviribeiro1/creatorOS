@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import supabase from '@/lib/supabase'
+import { APP_NAME } from '@/lib/brand'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -75,7 +76,7 @@ export function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold tracking-tight text-foreground">
-            Creator OS
+            {APP_NAME}
           </CardTitle>
           <CardDescription className="text-muted-foreground">
             Analise conteúdo viral e gere roteiros personalizados para Instagram
