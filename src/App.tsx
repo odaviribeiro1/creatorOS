@@ -16,6 +16,8 @@ import NewScriptPage from '@/pages/NewScriptPage'
 import ScriptDetailPage from '@/pages/ScriptDetailPage'
 import TeleprompterPage from '@/pages/TeleprompterPage'
 import SettingsPage from '@/pages/SettingsPage'
+import TeamPage from '@/pages/TeamPage'
+import InvitePage from '@/pages/InvitePage'
 
 export default function App() {
   return (
@@ -29,6 +31,14 @@ export default function App() {
               element={
                 <ErrorBoundary>
                   <LoginPage />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/invite"
+              element={
+                <ErrorBoundary>
+                  <InvitePage />
                 </ErrorBoundary>
               }
             />
@@ -131,6 +141,14 @@ export default function App() {
                 element={
                   <ErrorBoundary>
                     <SettingsPage />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="team"
+                element={
+                  <ErrorBoundary>
+                    <TeamPage />
                   </ErrorBoundary>
                 }
               />

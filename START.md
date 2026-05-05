@@ -10,7 +10,7 @@
 > 6. Digite na sessão: **"Leia o arquivo START.md e execute tudo"**
 > 7. Responda às perguntas conforme Claude Code as faz.
 >
-> Em ~10 minutos, sua instância estará configurada: 3 migrations aplicadas, 6 Edge Functions deployadas, secrets configuradas, conta de admin criada. Depois é só fazer o deploy do frontend na Vercel.
+> Em ~10 minutos, sua instância estará configurada: 3 migrations aplicadas, 8 Edge Functions deployadas, secrets configuradas, conta de admin criada. Depois é só fazer o deploy do frontend na Vercel.
 
 ---
 
@@ -169,7 +169,7 @@ Vou executar nesta ordem:
 2. Rodar `npm install` se node_modules/ não existir
 3. supabase link --project-ref {REF} (autenticação via SUPABASE_ACCESS_TOKEN)
 4. supabase db push (aplica as 3 migrations: initial_schema, editing_visual_effects_script_versions, app_users_and_roles)
-5. supabase functions deploy {nome} para cada: scrape-profiles, scrape-reel-url, analyze-content, generate-voice-profile, generate-script, job-status
+5. supabase functions deploy {nome} para cada: scrape-profiles, scrape-reel-url, analyze-content, generate-voice-profile, generate-script, job-status, create-invite, revoke-invite
 6. Configurar secrets via Management API (PATCH /v1/projects/{ref}/secrets) — apenas as não puladas
 7. Criar admin via Supabase Auth Admin API
 8. Verificar que app_users.role = 'admin' (trigger on_auth_user_created)
@@ -217,7 +217,7 @@ SUPABASE_ACCESS_TOKEN={ACCESS_TOKEN} supabase functions deploy {nome} \
   --project-ref {PROJECT_REF} --no-verify-jwt
 ```
 
-Functions: `scrape-profiles`, `scrape-reel-url`, `analyze-content`, `generate-voice-profile`, `generate-script`, `job-status`.
+Functions: `scrape-profiles`, `scrape-reel-url`, `analyze-content`, `generate-voice-profile`, `generate-script`, `job-status`, `create-invite`, `revoke-invite`.
 
 Mostrar progresso "{N}/6 deployadas". Se uma falhar, oferecer retry só dela.
 
@@ -274,7 +274,7 @@ Mostrar ao aluno em uma única mensagem:
 
 📊 Configurado:
 - Migrations aplicadas: 3 de 3 ✅
-- Edge Functions deployadas: 6 de 6 (scrape-profiles, scrape-reel-url, analyze-content, generate-voice-profile, generate-script, job-status)
+- Edge Functions deployadas: 8 de 8 (scrape-profiles, scrape-reel-url, analyze-content, generate-voice-profile, generate-script, job-status, create-invite, revoke-invite)
 - Secrets configuradas: N de 3 (lista quais)
 - Admin criado: voce@email.com (role = admin ✅)
 

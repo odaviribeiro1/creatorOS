@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import supabase from '@/lib/supabase'
 import { APP_NAME } from '@/lib/brand'
+import { hasOwner } from '@/lib/api'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +25,13 @@ export function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signUpSuccess, setSignUpSuccess] = useState(false)
+  const [signupOpen, setSignupOpen] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    hasOwner()
+      .then((exists) => setSignupOpen(!exists))
+      .catch(() => setSignupOpen(false))
+  }, [])
 
   if (!authLoading && user) {
     return <Navigate to="/" replace />
@@ -166,21 +174,27 @@ export function LoginPage() {
                 </Button>
               </form>
 
-              {/* Toggle sign up / sign in */}
-              <div className="text-center">
-                <button
-                  type="button"
-                  className="text-sm text-muted-foreground hover:text-[#60A5FA] transition-colors"
-                  onClick={() => {
-                    setIsSignUp(!isSignUp)
-                    setError(null)
-                  }}
-                >
-                  {isSignUp
-                    ? 'Já tem conta? Faça login'
-                    : 'Não tem conta? Cadastre-se'}
-                </button>
-              </div>
+              {/* Toggle sign up / sign in — só permite signup público se ainda não há owner */}
+              {signupOpen === null ? null : signupOpen || isSignUp ? (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    className="text-sm text-muted-foreground hover:text-[#60A5FA] transition-colors"
+                    onClick={() => {
+                      setIsSignUp(!isSignUp)
+                      setError(null)
+                    }}
+                  >
+                    {isSignUp
+                      ? 'Já tem conta? Faça login'
+                      : 'Primeira pessoa? Crie a conta de owner'}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-center text-xs text-muted-foreground">
+                  Self-signup desabilitado. Solicite um convite ao owner desta instância.
+                </p>
+              )}
             </>
           )}
 

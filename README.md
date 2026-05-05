@@ -73,11 +73,44 @@ for fn in scrape-profiles scrape-reel-url analyze-content generate-voice-profile
 done
 ```
 
-Configure as secrets das Edge Functions manualmente em **Supabase Dashboard → Project Settings → Edge Functions → Secrets** (lista no `.env.example` grupo "Edge Functions Secrets": `APIFY_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY`).
+Configure as secrets das Edge Functions manualmente em **Supabase Dashboard → Project Settings → Edge Functions → Secrets** (lista no `.env.example` grupo "Edge Functions Secrets": `APIFY_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, e opcionais `APP_URL`, `RESEND_API_KEY`, `EMAIL_FROM` para envio de convites por email).
 
 Crie sua conta admin acessando a aplicação localmente (`npm run dev`) ou após deploy na Vercel — o primeiro usuário que se cadastrar vira admin automaticamente (trigger `on_auth_user_created` na migration `20260502000000_app_users_and_roles.sql`).
 
 Para deploy do frontend na Vercel, acesse [vercel.com/new](https://vercel.com/new), importe seu fork e preencha `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` na tela de Environment Variables.
+
+---
+
+## 🔄 Atualizar para a versão mais recente
+
+Quando o upstream tiver atualizações novas:
+
+1. No seu fork no GitHub, clique em **"Sync fork"** (botão no topo).
+2. No terminal, dentro do projeto: `git pull`.
+3. Abra Claude Code: `claude`.
+4. Digite: **"Leia o arquivo UPDATE.md e execute tudo"**.
+5. Pronto — migrations novas aplicadas, Edge Functions redeployadas, frontend redeploya sozinho na Vercel.
+
+Veja [`UPDATE.md`](./UPDATE.md) para detalhes.
+
+---
+
+## 🛠️ Customizando o código
+
+Se você quer fazer customizações no código (não apenas via Settings da aplicação), faça em `src/customizations/`. Esse diretório é "zona livre" — o upstream nunca edita arquivos lá, evitando conflitos quando você atualizar.
+
+Veja [`src/customizations/README.md`](./src/customizations/README.md) para detalhes.
+
+---
+
+## 👥 Convites e roles
+
+Esta instância usa um modelo simples de roles:
+
+- **Owner** — primeiro usuário a se cadastrar. Único, gerencia convites.
+- **Member** — quem entra via convite (token válido por 7 dias).
+
+Após o owner ser criado, **self-signup público é fechado**: novos usuários só entram via convite gerado em **/team** pelo owner. Convites são links únicos que podem ser enviados por email automaticamente (se `RESEND_API_KEY` estiver configurada) ou copiados manualmente do dashboard.
 
 ---
 
@@ -158,6 +191,8 @@ Volte ao passo 3 e confirme que cada secret foi adicionada corretamente em **Sup
 ## 📚 Documentação adicional
 
 - [`START.md`](./START.md) — setup automático via Claude Code (caminho recomendado).
+- [`UPDATE.md`](./UPDATE.md) — aplicar atualizações futuras do upstream.
+- [`src/customizations/README.md`](./src/customizations/README.md) — onde fazer customizações sem causar conflitos.
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — modelo de dados, fluxo do pipeline, prompts usados nas chamadas a LLMs, padrão async de jobs e limitações conhecidas.
 - [`CHANGELOG.md`](./CHANGELOG.md) — histórico de versões.
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — como contribuir.

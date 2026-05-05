@@ -217,6 +217,45 @@ export async function restoreScriptVersion(
     .eq('id', scriptId)
 }
 
+export async function createInvite(email: string): Promise<{
+  invite_id: string
+  invite_url: string
+  expires_at: string
+  email_sent: boolean
+}> {
+  const { data, error } = await supabase.functions.invoke('create-invite', {
+    body: { email },
+  })
+  if (error) throw new Error(`Falha ao criar convite: ${error.message}`)
+  if (data?.error) throw new Error(data.error)
+  return data
+}
+
+export async function revokeInvite(inviteId: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('revoke-invite', {
+    body: { invite_id: inviteId },
+  })
+  if (error) throw new Error(`Falha ao revogar convite: ${error.message}`)
+  if (data?.error) throw new Error(data.error)
+}
+
+export async function hasOwner(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('has_owner')
+  if (error) throw new Error(`Falha ao consultar status do owner: ${error.message}`)
+  return Boolean(data)
+}
+
+export async function validateInviteToken(token: string): Promise<{
+  email: string | null
+  valid: boolean
+}> {
+  const { data, error } = await supabase.rpc('validate_invite_token', { p_token: token })
+  if (error) throw new Error(`Falha ao validar convite: ${error.message}`)
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row) return { email: null, valid: false }
+  return { email: (row as { email: string }).email, valid: Boolean((row as { valid: boolean }).valid) }
+}
+
 export async function generateScript(params: {
   topic: string;
   voice_profile_id?: string;

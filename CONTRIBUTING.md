@@ -117,6 +117,14 @@ Descreva no corpo do PR:
 
 ---
 
+## Customizando sem conflitos
+
+Toda customização que você fizer deve ficar em `src/customizations/`. Esse diretório é "zona livre" — o upstream nunca edita nada lá. Garante que `git sync fork` não gere conflito quando você puxar atualizações.
+
+Para mais detalhes, leia [`src/customizations/README.md`](./src/customizations/README.md).
+
+---
+
 ## Código de conduta
 
 Seja respeitoso. Discussões técnicas são bem-vindas; ataques pessoais não.
