@@ -35,21 +35,21 @@ Detalhes em [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 Este projeto é self-hosted. Cada usuário roda própria instância em Supabase + Vercel. Setup completo em ~15 minutos.
 
-### Caminho recomendado: setup interativo via Claude Code
+### Caminho recomendado: setup automático via Claude Code
 
-Se você tem [Claude Code](https://claude.com/claude-code) instalado, esse é o caminho mais simples — Claude Code te pergunta cada credencial, valida tudo, e configura sua instância sozinho.
+Se você tem [Claude Code](https://claude.com/claude-code) instalado, esse é o caminho mais simples — Claude Code lê o `START.md` deste repositório, te pergunta cada credencial, valida tudo, e configura sua instância sozinho.
 
 1. Crie um projeto novo no Supabase em https://supabase.com/dashboard.
 2. Faça fork deste repositório no GitHub.
 3. Clone o seu fork localmente: `git clone https://github.com/<seu-usuario>/creator-os.git`.
 4. Entre na pasta: `cd creator-os`.
 5. Abra Claude Code: `claude`.
-6. Abra o arquivo [`BOOTSTRAP.md`](./BOOTSTRAP.md), copie tudo a partir da linha "Prompt para Claude Code", e cole na sessão.
-7. Responda às perguntas — Claude Code aplica as 3 migrations, deploya as 6 Edge Functions, configura as secrets e cria seu admin.
+6. Digite na sessão: **"Leia o arquivo START.md e execute tudo"**
+7. Responda às perguntas conforme Claude Code as faz — ele aplica as 3 migrations, deploya as 6 Edge Functions, configura as secrets e cria seu admin.
 8. Quando terminar, faça deploy do frontend na Vercel preenchendo `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (Claude Code te lembra desses valores no final).
 9. Acesse a URL gerada pela Vercel e faça login com o admin criado.
 
-Veja [`BOOTSTRAP.md`](./BOOTSTRAP.md) para detalhes.
+Veja [`START.md`](./START.md) para a lista de credenciais que você precisa ter em mãos antes de começar.
 
 ### Caminho manual (sem Claude Code)
 
@@ -157,7 +157,7 @@ Volte ao passo 3 e confirme que cada secret foi adicionada corretamente em **Sup
 
 ## 📚 Documentação adicional
 
-- [`BOOTSTRAP.md`](./BOOTSTRAP.md) — setup interativo via Claude Code (caminho recomendado).
+- [`START.md`](./START.md) — setup automático via Claude Code (caminho recomendado).
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — modelo de dados, fluxo do pipeline, prompts usados nas chamadas a LLMs, padrão async de jobs e limitações conhecidas.
 - [`CHANGELOG.md`](./CHANGELOG.md) — histórico de versões.
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — como contribuir.

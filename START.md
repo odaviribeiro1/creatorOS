@@ -1,32 +1,26 @@
-# BOOTSTRAP — Setup interativo via Claude Code
+# START — Setup da sua instância
 
-> Este arquivo contém um prompt pronto para você colar em uma sessão de Claude Code rodando na pasta deste repositório recém-clonado.
+> Bem-vindo! Este arquivo configura sua instância do **Creator OS** na sua infraestrutura Supabase + Vercel via Claude Code.
 >
-> Em ~10 minutos, Claude Code vai te perguntar suas credenciais uma a uma, configurar o projeto Supabase, aplicar todas as migrations, deployar as 6 Edge Functions, configurar as secrets, criar sua conta de admin, e te entregar o passo final para deploy do frontend na Vercel.
+> 1. Crie um projeto novo no Supabase em https://supabase.com/dashboard (anote URL, anon key, service_role key e Project Reference em Project Settings → API e General).
+> 2. Crie um Personal Access Token Supabase em https://supabase.com/dashboard/account/tokens (escopo "All access").
+> 3. Tenha em mãos as chaves de API dos providers que este projeto usa (lista mais abaixo).
+> 4. Abra um terminal na raiz deste repositório clonado.
+> 5. Execute `claude` (Claude Code precisa estar instalado e autorizado).
+> 6. Digite na sessão: **"Leia o arquivo START.md e execute tudo"**
+> 7. Responda às perguntas conforme Claude Code as faz.
 >
-> Pré-requisitos: Node 20+, Claude Code instalado e autorizado, [Supabase CLI](https://supabase.com/docs/guides/cli) instalado, git, e este repositório clonado.
-
----
-
-## Como usar
-
-1. Crie um projeto novo no Supabase em https://supabase.com/dashboard. Anote o Project Reference (em Project Settings → General).
-2. Crie um Personal Access Token Supabase em https://supabase.com/dashboard/account/tokens. Marque a opção **All access** no escopo. Anote o token.
-3. Tenha em mãos as chaves de API dos providers: Apify, OpenAI e Google Gemini (lista completa abaixo).
-4. Abra um terminal na raiz deste repositório.
-5. Execute `claude` (precisa estar instalado e autorizado).
-6. Cole o prompt completo abaixo (a partir da linha "Prompt para Claude Code") na sessão.
-7. Responda às perguntas conforme Claude Code as faz, uma a uma.
+> Em ~10 minutos, sua instância estará configurada: 3 migrations aplicadas, 6 Edge Functions deployadas, secrets configuradas, conta de admin criada. Depois é só fazer o deploy do frontend na Vercel.
 
 ---
 
 ## Credenciais que serão pedidas
 
-- **Supabase URL** — formato `https://xxxxxxxxxxxxxxxxxxxx.supabase.co`. Achar em Project Settings → API → Project URL.
-- **Supabase anon key** — JWT longo. Achar em Project Settings → API → Project API keys → `anon` `public`.
-- **Supabase service_role key** — JWT longo (manter em sigilo). Achar em Project Settings → API → Project API keys → `service_role` `secret`.
-- **Supabase Project Reference** — código curto tipo `xhznjliwxbosunwrcaut`. Achar em Project Settings → General → Reference ID.
-- **Supabase Personal Access Token** — formato `sbp_...`. Criar em https://supabase.com/dashboard/account/tokens.
+- **Supabase URL** — formato `https://xxxxxxxxxxxxxxxxxxxx.supabase.co`. Em Project Settings → API → Project URL.
+- **Supabase anon key** — JWT longo. Em Project Settings → API → Project API keys → `anon` `public`.
+- **Supabase service_role key** — JWT longo (manter em sigilo). Em Project Settings → API → Project API keys → `service_role` `secret`.
+- **Supabase Project Reference** — código curto tipo `xhznjliwxbosunwrcaut`. Em Project Settings → General → Reference ID.
+- **Supabase Personal Access Token** — formato `sbp_...`. Em https://supabase.com/dashboard/account/tokens.
 - **Email e senha** que você vai usar como admin desta instância.
 - **APIFY_TOKEN** — scraping de Reels Instagram. Crie em https://console.apify.com/account/integrations.
 - **OPENAI_API_KEY** — Whisper (transcrição) e GPT (análise/geração). Crie em https://platform.openai.com/api-keys.
@@ -34,11 +28,11 @@
 
 ---
 
-## Prompt para Claude Code
+## Instruções para Claude Code
 
-> Cole tudo abaixo desta linha na sessão Claude Code aberta na raiz deste repositório.
+> A partir daqui, este arquivo é lido pelo Claude Code do aluno e contém as instruções que você (Claude Code) deve executar quando o aluno disser "leia START.md e execute tudo". Siga as instruções abaixo passo a passo.
 
-Você é responsável por configurar o **Creator OS** self-hosted na infraestrutura Supabase do usuário (aluno). O fluxo é interativo, uma credencial por vez, validar imediatamente, e só ao final aplicar mudanças no Supabase do usuário.
+Você é responsável por configurar o **Creator OS** self-hosted na infraestrutura Supabase do usuário (aluno). O fluxo é interativo: você vai perguntar uma credencial por vez, validar imediatamente, e só ao final aplicar mudanças no Supabase do usuário.
 
 ### Princípios
 
@@ -54,8 +48,8 @@ Você é responsável por configurar o **Creator OS** self-hosted na infraestrut
 1. Confirmar `node --version` retorna 20+.
 2. Confirmar `supabase --version` está instalado (Supabase CLI). Se não, parar e pedir para o aluno instalar via `brew install supabase/tap/supabase` ou equivalente.
 3. Confirmar `pwd` está na raiz do repositório `creator-os` (existe `package.json` com `"name": "creator-os"` e pasta `supabase/migrations/` com 3 arquivos `.sql`).
-4. `git status` deve estar limpo.
-5. Ler `.env.example` na raiz e confirmar que existem 3 grupos: Frontend (`VITE_*`), Edge Functions Secrets (`APIFY_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY`), Scripts (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`).
+4. `git status` deve estar limpo (não obrigatório, mas alertar se sujo).
+5. Ler `.env.example` na raiz e confirmar 3 grupos: Frontend (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_APP_NAME`), Edge Functions Secrets (`APIFY_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY`), Scripts (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`).
 
 ### Sequência interativa
 
@@ -85,7 +79,7 @@ Perguntar: "Cole sua Supabase URL (formato `https://xxxx.supabase.co`)."
 
 Validar:
 - Formato regex `^https://[a-z0-9]{20,}\.supabase\.co$`
-- Fazer `curl -sI {URL}/rest/v1/ -H "apikey: dummy"` — deve retornar `401` (não `404` ou erro de DNS). Isso confirma que a URL existe.
+- Fazer `curl -sI {URL}/rest/v1/ -H "apikey: dummy"` — deve retornar `401` (não `404` ou erro de DNS).
 
 Se inválido, explicar o erro e pedir de novo.
 
@@ -258,7 +252,7 @@ Verificar resposta `200` e que retorna `id` de usuário.
 
 **10.7 — Validar trigger de admin**
 
-Aguardar 2-3 segundos para o trigger `on_auth_user_created` executar. Consultar via `psql` ou via PostgREST:
+Aguardar 2-3 segundos para o trigger `on_auth_user_created` executar. Consultar via PostgREST:
 
 ```bash
 curl -s "{SUPABASE_URL}/rest/v1/app_users?select=user_id,role&user_id=eq.{USER_ID}" \
@@ -266,7 +260,7 @@ curl -s "{SUPABASE_URL}/rest/v1/app_users?select=user_id,role&user_id=eq.{USER_I
   -H "Authorization: Bearer {SERVICE_ROLE}"
 ```
 
-Confirmar que `role = 'admin'`. Se não for, alertar mas não falhar — o trigger pode estar com schema diferente; o aluno pode promover manualmente via SQL Editor:
+Confirmar que `role = 'admin'`. Se não for, alertar mas não falhar — o aluno pode promover manualmente via SQL Editor:
 ```sql
 UPDATE app_users SET role = 'admin' WHERE user_id = '{USER_ID}';
 ```
