@@ -184,6 +184,120 @@ export default function ScriptDetailPage() {
     URL.revokeObjectURL(url)
   }
 
+  async function exportPDF() {
+    if (!script) return
+    const { jsPDF } = await import('jspdf')
+    const report = (script.editing_report ?? {}) as Record<string, unknown>
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const margin = 50
+    const maxWidth = pageWidth - margin * 2
+    let y = margin
+
+    function ensureSpace(needed: number) {
+      if (y + needed > pageHeight - margin) {
+        doc.addPage()
+        y = margin
+      }
+    }
+
+    function write(
+      text: string,
+      opts: {
+        size?: number
+        style?: 'normal' | 'bold' | 'italic'
+        color?: [number, number, number]
+        gap?: number
+        leading?: number
+      } = {}
+    ) {
+      const { size = 11, style = 'normal', color = [30, 30, 30], gap = 4, leading = 1.4 } = opts
+      doc.setFontSize(size)
+      doc.setFont('helvetica', style)
+      doc.setTextColor(color[0], color[1], color[2])
+      const lineHeight = size * leading
+      const lines = doc.splitTextToSize(text, maxWidth) as string[]
+      for (const line of lines) {
+        ensureSpace(lineHeight)
+        doc.text(line, margin, y)
+        y += lineHeight
+      }
+      y += gap
+    }
+
+    function divider() {
+      ensureSpace(12)
+      doc.setDrawColor(220, 220, 220)
+      doc.line(margin, y, pageWidth - margin, y)
+      y += 12
+    }
+
+    // Cover / metadata
+    write(script.title, { size: 22, style: 'bold', gap: 6 })
+    write(`Tema: ${script.topic}`, { size: 10, color: [90, 90, 90] })
+    if (script.estimated_duration_seconds) {
+      write(`Duração estimada: ~${Math.round(script.estimated_duration_seconds)}s`, {
+        size: 10,
+        color: [90, 90, 90],
+      })
+    }
+    if (report.aspect_ratio) write(`Aspecto: ${String(report.aspect_ratio)}`, { size: 10, color: [90, 90, 90] })
+    if (report.color_grading) write(`Color Grading: ${String(report.color_grading)}`, { size: 10, color: [90, 90, 90] })
+    if (report.captions_style) write(`Legendas: ${String(report.captions_style)}`, { size: 10, color: [90, 90, 90] })
+    divider()
+
+    // Music
+    if (report.music_recommendation) {
+      const music = report.music_recommendation as Record<string, unknown>
+      write('Música', { size: 14, style: 'bold', gap: 6 })
+      if (music.mood) write(`Mood: ${String(music.mood)}`, { size: 10 })
+      if (music.genre) write(`Gênero: ${String(music.genre)}`, { size: 10 })
+      if (Array.isArray(music.reference_tracks) && music.reference_tracks.length > 0) {
+        write('Referências:', { size: 10, style: 'bold', gap: 2 })
+        for (const t of music.reference_tracks as string[]) {
+          write(`  • ${t}`, { size: 10, gap: 2 })
+        }
+      }
+      divider()
+    }
+
+    // Roteiro
+    doc.addPage()
+    y = margin
+    write('Roteiro para Teleprompter', { size: 16, style: 'bold', gap: 10 })
+    write(script.script_teleprompter, { size: 11, leading: 1.6 })
+
+    // Editing instructions
+    const instructions = (report.editing_instructions ?? []) as Array<Record<string, unknown>>
+    if (instructions.length > 0) {
+      doc.addPage()
+      y = margin
+      write('Relatório de Edição', { size: 16, style: 'bold', gap: 10 })
+      for (const inst of instructions) {
+        ensureSpace(80)
+        const ts = String(inst.timestamp ?? '—')
+        const section = String(inst.section ?? '').toUpperCase()
+        write(`${ts}  ·  ${section}`, { size: 12, style: 'bold', color: [37, 99, 235], gap: 4 })
+        if (inst.visual) write(`Visual: ${String(inst.visual)}`, { size: 10 })
+        if (inst.text_overlay) write(`Texto: ${String(inst.text_overlay)}`, { size: 10 })
+        if (inst.audio) write(`Áudio: ${String(inst.audio)}`, { size: 10 })
+        if (inst.transitions) write(`Transições: ${String(inst.transitions)}`, { size: 10 })
+        if (inst.transition_in) write(`Entrada: ${String(inst.transition_in)}`, { size: 10 })
+        if (inst.transition_out) write(`Saída: ${String(inst.transition_out)}`, { size: 10 })
+        if (Array.isArray(inst.broll_suggestions) && inst.broll_suggestions.length > 0) {
+          write('B-Roll:', { size: 10, style: 'bold', gap: 2 })
+          for (const b of inst.broll_suggestions as string[]) {
+            write(`  • ${b}`, { size: 10, gap: 2 })
+          }
+        }
+        y += 8
+      }
+    }
+
+    doc.save(`${script.title.replace(/\s+/g, '_')}.pdf`)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -246,6 +360,10 @@ export default function ScriptDetailPage() {
           <Button variant="outline" size="sm" onClick={exportMarkdown}>
             <Download className="size-3" />
             Exportar MD
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportPDF}>
+            <Download className="size-3" />
+            Exportar PDF
           </Button>
         </div>
       </div>
