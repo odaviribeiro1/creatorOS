@@ -107,7 +107,7 @@ export default function VoiceProfilePage() {
     try {
       const { job_id } = await scrapeProfile([ownProfile.instagram_username], 'own')
       setScrapeStatus('processing')
-      let cancelled = false
+      const cancelled = false
       const poll = async () => {
         while (!cancelled) {
           try {

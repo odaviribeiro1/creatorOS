@@ -266,8 +266,7 @@ serve(async (req: Request) => {
     })()
 
     try {
-      // deno-lint-ignore no-explicit-any
-      const runtime = (globalThis as any).EdgeRuntime
+      const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime
       if (runtime?.waitUntil) runtime.waitUntil(backgroundTask)
     } catch {
       backgroundTask.catch((err) => log('error', 'Background task failed', { error: String(err) }))

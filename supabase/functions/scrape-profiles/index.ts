@@ -401,8 +401,7 @@ serve(async (req: Request) => {
     // Deno Deploy / Supabase Edge Functions support EdgeRuntime.waitUntil
     // to keep the function alive after the response is sent
     try {
-      // deno-lint-ignore no-explicit-any
-      const runtime = (globalThis as any).EdgeRuntime
+      const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime
       if (runtime?.waitUntil) {
         runtime.waitUntil(backgroundTask)
       }

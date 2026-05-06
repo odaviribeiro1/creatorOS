@@ -27,6 +27,10 @@ export function ModelSelector({ compact }: ModelSelectorProps) {
   const modelProvider = useAppStore((s) => s.modelProvider)
   const modelId = useAppStore((s) => s.modelId)
   const setModel = useAppStore((s) => s.setModel)
+  const [expanded, setExpanded] = useState<Record<ModelProvider, boolean>>({
+    openai: modelProvider === 'openai',
+    gemini: modelProvider === 'gemini',
+  })
 
   if (compact) {
     return (
@@ -53,10 +57,6 @@ export function ModelSelector({ compact }: ModelSelectorProps) {
 
   const grouped = groupByProvider(MODEL_OPTIONS)
   const providers: ModelProvider[] = ['openai', 'gemini']
-  const [expanded, setExpanded] = useState<Record<ModelProvider, boolean>>({
-    openai: modelProvider === 'openai',
-    gemini: modelProvider === 'gemini',
-  })
 
   const toggle = (p: ModelProvider) =>
     setExpanded((prev) => ({ ...prev, [p]: !prev[p] }))
