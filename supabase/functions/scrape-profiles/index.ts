@@ -204,13 +204,13 @@ async function downloadThumbnailToStorage(
     const path = `thumbnails/${instagramId}.${ext}`
     const bytes = new Uint8Array(await res.arrayBuffer())
     const { error } = await supabase.storage
-      .from('videos')
+      .from('thumbnails')
       .upload(path, bytes, { contentType, upsert: true })
     if (error) {
       log('warn', `Storage upload failed for ${instagramId}`, { error: error.message })
       return null
     }
-    return supabase.storage.from('videos').getPublicUrl(path).data.publicUrl
+    return supabase.storage.from('thumbnails').getPublicUrl(path).data.publicUrl
   } catch (err) {
     log('warn', `Thumbnail re-host failed for ${instagramId}`, { error: String(err) })
     return null
