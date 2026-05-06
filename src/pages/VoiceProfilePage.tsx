@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Mic, Loader2, RefreshCw, Quote, Zap, Download, Check, X, AlertCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,7 +10,7 @@ import { ModelSelector } from '@/components/shared/ModelSelector'
 import { useVoiceProfile } from '@/hooks/useVoiceProfile'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useAppStore } from '@/store'
-import { generateVoiceProfile, scrapeProfile, getJobStatus } from '@/lib/api'
+import { generateVoiceProfile, scrapeProfile } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
 import type { Profile, Reel } from '@/types'
@@ -39,6 +39,49 @@ export default function VoiceProfilePage() {
   const vpJobs = activeJobs.filter(
     (j) => j.job_type === 'voice_profile' && (j.status === 'pending' || j.status === 'processing')
   )
+
+  const ownScrapeJob = ownProfile
+    ? activeJobs.find((j) => {
+        if (j.job_type !== 'scrape') return false
+        const usernames = (j.input_data as { usernames?: unknown })?.usernames
+        return Array.isArray(usernames) && usernames.includes(ownProfile.instagram_username)
+      })
+    : undefined
+
+  const trackedJobRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!ownScrapeJob) return
+
+    if (ownScrapeJob.status === 'pending' || ownScrapeJob.status === 'processing') {
+      setScrapeStatus('processing')
+      setScrapeProgress(ownScrapeJob.progress)
+      setScrapeError(null)
+      trackedJobRef.current = ownScrapeJob.id
+      return
+    }
+
+    if (trackedJobRef.current !== ownScrapeJob.id) return
+
+    if (ownScrapeJob.status === 'completed') {
+      setScrapeStatus('success')
+      setScrapeProgress(100)
+      setReelsRefreshKey((k) => k + 1)
+      trackedJobRef.current = null
+      const t = setTimeout(() => setScrapeStatus('idle'), 4000)
+      return () => clearTimeout(t)
+    }
+
+    if (ownScrapeJob.status === 'failed') {
+      setScrapeStatus('error')
+      setScrapeError(ownScrapeJob.error_message ?? 'Falha no processamento')
+      trackedJobRef.current = null
+      const t = setTimeout(() => setScrapeStatus('idle'), 8000)
+      return () => clearTimeout(t)
+    }
+    // Watching specific fields (not the whole object) to avoid re-runs on store identity churn
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownScrapeJob?.id, ownScrapeJob?.status, ownScrapeJob?.progress, ownScrapeJob?.error_message])
 
   useEffect(() => {
     if (!ownProfile) return
@@ -105,34 +148,10 @@ export default function VoiceProfilePage() {
     setScrapeStatus('starting')
     setScrapeProgress(0)
     try {
-      const { job_id } = await scrapeProfile([ownProfile.instagram_username], 'own')
-      setScrapeStatus('processing')
-      const cancelled = false
-      const poll = async () => {
-        while (!cancelled) {
-          try {
-            const job = await getJobStatus(job_id)
-            setScrapeProgress(job.progress)
-            if (job.status === 'completed') {
-              setScrapeStatus('success')
-              setScrapeProgress(100)
-              setReelsRefreshKey((k) => k + 1)
-              setTimeout(() => { if (!cancelled) setScrapeStatus('idle') }, 4000)
-              return
-            }
-            if (job.status === 'failed') {
-              setScrapeStatus('error')
-              setScrapeError(job.error_message ?? 'Falha no processamento')
-              setTimeout(() => { if (!cancelled) setScrapeStatus('idle') }, 8000)
-              return
-            }
-          } catch {
-            // continue polling
-          }
-          await new Promise((r) => setTimeout(r, 3000))
-        }
-      }
-      poll()
+      await scrapeProfile([ownProfile.instagram_username], 'own')
+      // The job is now in flight. The useEffect watching ownScrapeJob will
+      // pick it up via Supabase Realtime and drive scrapeStatus/progress —
+      // this works even if the user navigates away and comes back.
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setScrapeError(msg)
