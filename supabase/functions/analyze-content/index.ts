@@ -351,6 +351,25 @@ Retorne APENAS um JSON válido com esta estrutura:
 
 Retorne APENAS o JSON.`
 
+function isReasoningModel(modelId: string): boolean {
+  return /^gpt-5/i.test(modelId) || /^o[1-9]/i.test(modelId)
+}
+
+function extractResponsesText(result: Record<string, unknown>): string {
+  if (typeof result.output_text === 'string') return result.output_text
+  const output = result.output as unknown
+  if (!Array.isArray(output)) return ''
+  let text = ''
+  for (const item of output) {
+    if (item && typeof item === 'object' && 'content' in item && Array.isArray((item as { content: unknown[] }).content)) {
+      for (const c of (item as { content: Array<Record<string, unknown>> }).content) {
+        if ((c.type === 'output_text' || c.type === 'text') && typeof c.text === 'string') text += c.text
+      }
+    }
+  }
+  return text
+}
+
 async function analyzeStructureWithOpenAI(
   transcription: string,
   visualAnalysis: EditingElements,
@@ -360,6 +379,30 @@ async function analyzeStructureWithOpenAI(
   const prompt = STRUCTURE_PROMPT
     .replace('{transcription}', transcription)
     .replace('{visual}', JSON.stringify(visualAnalysis, null, 2))
+
+  if (isReasoningModel(modelId)) {
+    const response = await fetchWithRetry('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+      body: JSON.stringify({
+        model: modelId,
+        input: prompt,
+        reasoning: { effort: 'medium' },
+        text: { verbosity: 'low', format: { type: 'json_object' } },
+      }),
+    })
+    if (!response.ok) {
+      throw new Error(`OpenAI Responses API failed (${response.status}): ${await response.text()}`)
+    }
+    const result = await response.json()
+    const text = extractResponsesText(result) || '{}'
+    try {
+      return JSON.parse(text)
+    } catch {
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      return jsonMatch ? JSON.parse(jsonMatch[0]) : {}
+    }
+  }
 
   const response = await fetchWithRetry('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -642,7 +685,7 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const body: AnalyzeRequest = await req.json()
-    const { reel_ids, user_id, model_provider = 'openai', model_id = 'gpt-4o' } = body
+    const { reel_ids, user_id, model_provider = 'openai', model_id = 'gpt-5.5' } = body
 
     if (!reel_ids || !Array.isArray(reel_ids) || reel_ids.length === 0) {
       return new Response(JSON.stringify({ error: 'reel_ids must be a non-empty array' }), {

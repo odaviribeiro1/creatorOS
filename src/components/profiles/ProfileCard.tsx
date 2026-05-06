@@ -97,7 +97,7 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
     setScrapeStatus('starting')
     setScrapeProgress(0)
     try {
-      const { job_id } = await scrapeProfile([profile.instagram_username])
+      const { job_id } = await scrapeProfile([profile.instagram_username], profile.profile_type)
       setScrapeStatus('processing')
       pollJob(job_id, setScrapeStatus, setScrapeProgress, setScrapeError, onScrapeComplete)
     } catch (err) {

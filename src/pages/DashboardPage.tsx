@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TrendingUp, Users, Film, Zap, ArrowRight, Loader2 } from 'lucide-react'
+import { TrendingUp, Users, Film, Zap, ArrowRight, Loader2, Mic } from 'lucide-react'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -91,17 +91,24 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <div className="rounded-full bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] p-6">
-          <Zap className="size-12 text-primary" />
+          <Mic className="size-12 text-primary" />
         </div>
         <h2 className="text-2xl font-bold text-foreground">{`Bem-vindo ao ${APP_NAME}`}</h2>
         <p className="max-w-md text-center text-muted-foreground">
-          Comece adicionando perfis do Instagram para extrair e analisar
-          conteúdos virais.
+          Comece extraindo o seu estilo de fala — analisamos seus vídeos do Instagram
+          para entender como você se comunica.
         </p>
-        <Button onClick={() => navigate('/profiles')} className="mt-2 btn-gradient">
-          Adicionar Perfis
+        <Button onClick={() => navigate('/voice-profile')} className="mt-2 btn-gradient">
+          <Mic className="size-4" />
+          Extrair Estilo de Fala
           <ArrowRight className="ml-2 size-4" />
         </Button>
+        <button
+          onClick={() => navigate('/profiles')}
+          className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          ou adicionar perfis de referência
+        </button>
       </div>
     )
   }

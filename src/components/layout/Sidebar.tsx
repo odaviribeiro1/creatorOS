@@ -21,9 +21,9 @@ import {
 
 const navItems = [
   { to: '/' as const, icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { to: '/voice-profile' as const, icon: Mic, label: 'Estilo de Fala', end: false },
   { to: '/profiles' as const, icon: Users, label: 'Perfis', end: false },
   { to: '/analysis' as const, icon: BarChart3, label: 'Análises', end: false },
-  { to: '/voice-profile' as const, icon: Mic, label: 'Voice Profile', end: false },
   { to: '/scripts' as const, icon: FileText, label: 'Roteiros', end: false },
   { to: '/settings' as const, icon: Settings, label: 'Configurações', end: false },
 ]

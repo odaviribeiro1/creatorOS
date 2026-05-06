@@ -9,7 +9,6 @@ export default function ProfilesPage() {
   const { profiles, loading, refetch } = useProfiles()
   const [modalOpen, setModalOpen] = useState(false)
 
-  const ownProfiles = profiles.filter((p) => p.profile_type === 'own')
   const referenceProfiles = profiles.filter(
     (p) => p.profile_type === 'reference'
   )
@@ -19,10 +18,12 @@ export default function ProfilesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Perfis</h1>
+          <h1 className="text-xl font-semibold text-foreground">Perfis de Referência</h1>
           <p className="text-sm text-muted-foreground">
-            {profiles.length}{' '}
-            {profiles.length === 1 ? 'perfil adicionado' : 'perfis adicionados'}
+            {referenceProfiles.length}{' '}
+            {referenceProfiles.length === 1
+              ? 'concorrente analisado'
+              : 'concorrentes analisados'}
           </p>
         </div>
         <Button onClick={() => setModalOpen(true)} className="btn-gradient">
@@ -44,11 +45,11 @@ export default function ProfilesPage() {
       )}
 
       {/* Empty state */}
-      {!loading && profiles.length === 0 && (
+      {!loading && referenceProfiles.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
           <Globe className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Adicione perfis do Instagram para começar a análise
+            Adicione perfis de concorrentes ou referências para extrair padrões virais
           </p>
           <Button variant="outline" onClick={() => setModalOpen(true)} className="border-[rgba(59,130,246,0.25)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.08)]">
             <Plus className="size-4" />
@@ -57,32 +58,13 @@ export default function ProfilesPage() {
         </div>
       )}
 
-      {/* Own profiles */}
-      {!loading && ownProfiles.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="label-uppercase">
-            Meus Perfis
-          </h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {ownProfiles.map((profile) => (
-              <ProfileCard key={profile.id} profile={profile} />
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Reference profiles */}
       {!loading && referenceProfiles.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="label-uppercase">
-            Perfis de Referência
-          </h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {referenceProfiles.map((profile) => (
-              <ProfileCard key={profile.id} profile={profile} />
-            ))}
-          </div>
-        </section>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {referenceProfiles.map((profile) => (
+            <ProfileCard key={profile.id} profile={profile} />
+          ))}
+        </div>
       )}
 
       {/* Modal */}

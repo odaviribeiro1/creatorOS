@@ -10,17 +10,19 @@ export type ModelOption = {
   provider: ModelProvider;
   model: string;
   label: string;
+  description?: string;
 };
 
 export const MODEL_OPTIONS: ModelOption[] = [
-  { provider: 'openai', model: 'gpt-4.1', label: 'GPT-4.1 (OpenAI)' },
-  { provider: 'openai', model: 'gpt-4.1-mini', label: 'GPT-4.1 Mini (OpenAI)' },
-  { provider: 'openai', model: 'gpt-4o', label: 'GPT-4o (OpenAI)' },
-  { provider: 'openai', model: 'gpt-4o-mini', label: 'GPT-4o Mini (OpenAI)' },
-  { provider: 'gemini', model: 'gemini-3-pro', label: 'Gemini 3 Pro (Google)' },
-  { provider: 'gemini', model: 'gemini-3-flash', label: 'Gemini 3 Flash (Google)' },
-  { provider: 'gemini', model: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Google)' },
-  { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Google)' },
+  { provider: 'openai', model: 'gpt-5.5', label: 'GPT-5.5', description: 'Flagship mais recente — maior qualidade de geração' },
+  { provider: 'openai', model: 'gpt-5', label: 'GPT-5', description: 'Geração de alto nível, equilíbrio custo/qualidade' },
+  { provider: 'openai', model: 'gpt-4.1', label: 'GPT-4.1', description: 'Robusto, contexto longo' },
+  { provider: 'openai', model: 'gpt-4o', label: 'GPT-4o', description: 'Multimodal padrão, rápido' },
+  { provider: 'openai', model: 'o3', label: 'o3', description: 'Raciocínio profundo (mais lento, melhor estrutura)' },
+  { provider: 'gemini', model: 'gemini-3-pro', label: 'Gemini 3 Pro', description: 'Flagship Google — máxima capacidade' },
+  { provider: 'gemini', model: 'gemini-3-flash', label: 'Gemini 3 Flash', description: 'Rápido e econômico, geração 3' },
+  { provider: 'gemini', model: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'Estável, contexto extenso' },
+  { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'Custo-benefício, baixa latência' },
 ];
 
 // --- Profiles ---

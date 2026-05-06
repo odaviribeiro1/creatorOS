@@ -72,7 +72,7 @@ export const useAppStore = create<AppState>()(
 
       // Model preference
       modelProvider: 'openai',
-      modelId: 'gpt-4o',
+      modelId: 'gpt-5.5',
       setModel: (modelProvider, modelId) => set({ modelProvider, modelId }),
     }),
     {

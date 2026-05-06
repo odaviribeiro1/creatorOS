@@ -8,11 +8,14 @@ async function getUserId(): Promise<string> {
 }
 
 export async function scrapeProfile(
-  usernames: string[]
+  usernames: string[],
+  profileType?: 'reference' | 'own'
 ): Promise<{ job_id: string }> {
   const user_id = await getUserId();
+  const body: Record<string, unknown> = { usernames, user_id };
+  if (profileType) body.profile_type = profileType;
   const { data, error } = await supabase.functions.invoke('scrape-profiles', {
-    body: { usernames, user_id },
+    body,
   });
 
   if (error) {
