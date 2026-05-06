@@ -43,6 +43,7 @@ export default function ProfileReelsPage() {
   }, [id])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProfile()
   }, [fetchProfile])
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { X, Play, Pause, Minus, Plus, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -16,26 +16,25 @@ export default function TeleprompterPage() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const animRef = useRef<number>(0)
 
-  const scroll = useCallback(() => {
-    if (scrollRef.current) {
+  useEffect(() => {
+    if (!playing) return
+    let cancelled = false
+    function tick() {
+      if (cancelled || !scrollRef.current) return
       scrollRef.current.scrollTop += speed
       const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
       if (scrollTop + clientHeight >= scrollHeight) {
         setPlaying(false)
         return
       }
+      animRef.current = requestAnimationFrame(tick)
     }
-    animRef.current = requestAnimationFrame(scroll)
-  }, [speed])
-
-  useEffect(() => {
-    if (playing) {
-      animRef.current = requestAnimationFrame(scroll)
-    } else {
+    animRef.current = requestAnimationFrame(tick)
+    return () => {
+      cancelled = true
       cancelAnimationFrame(animRef.current)
     }
-    return () => cancelAnimationFrame(animRef.current)
-  }, [playing, scroll])
+  }, [playing, speed])
 
   function reset() {
     setPlaying(false)

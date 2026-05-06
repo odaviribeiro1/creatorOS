@@ -37,6 +37,7 @@ export function useProfiles() {
 
   useEffect(() => {
     if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchProfiles()
     }
   }, [user, fetchProfiles])

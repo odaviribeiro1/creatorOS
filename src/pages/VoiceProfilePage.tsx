@@ -1,25 +1,39 @@
 import { useState, useEffect } from 'react'
-import { Mic, Loader2, RefreshCw, Quote, Zap } from 'lucide-react'
+import { Mic, Loader2, RefreshCw, Quote, Zap, Download, Check, X, AlertCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 import { ModelSelector } from '@/components/shared/ModelSelector'
 import { useVoiceProfile } from '@/hooks/useVoiceProfile'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useAppStore } from '@/store'
-import { generateVoiceProfile } from '@/lib/api'
+import { generateVoiceProfile, scrapeProfile, getJobStatus } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
-import type { Reel } from '@/types'
+import type { Profile, Reel } from '@/types'
+
+type ButtonStatus = 'idle' | 'starting' | 'processing' | 'success' | 'error'
 
 export default function VoiceProfilePage() {
   const { voiceProfile, loading } = useVoiceProfile()
-  const { profiles } = useProfiles()
+  const { profiles, refetch: refetchProfiles } = useProfiles()
   const activeJobs = useAppStore((s) => s.activeJobs)
+  const user = useAppStore((s) => s.user)
+  const addProfile = useAppStore((s) => s.addProfile)
 
   const [ownReels, setOwnReels] = useState<Reel[]>([])
   const [generating, setGenerating] = useState(false)
   const [selectedReels, setSelectedReels] = useState<Set<string>>(new Set())
+  const [scrapeStatus, setScrapeStatus] = useState<ButtonStatus>('idle')
+  const [scrapeProgress, setScrapeProgress] = useState(0)
+  const [scrapeError, setScrapeError] = useState<string | null>(null)
+  const [reelsRefreshKey, setReelsRefreshKey] = useState(0)
+  const [ownUsernameInput, setOwnUsernameInput] = useState('')
+  const [creatingOwn, setCreatingOwn] = useState(false)
+  const [createOwnError, setCreateOwnError] = useState<string | null>(null)
 
   const ownProfile = profiles.find((p) => p.profile_type === 'own')
   const vpJobs = activeJobs.filter(
@@ -40,7 +54,92 @@ export default function VoiceProfilePage() {
         const preselect = reels.slice(0, Math.min(10, reels.length)).map((r) => r.id)
         setSelectedReels(new Set(preselect))
       })
-  }, [ownProfile])
+  }, [ownProfile, reelsRefreshKey])
+
+  async function handleCreateOwn(e: React.FormEvent) {
+    e.preventDefault()
+    if (!user) return
+    const cleanUsername = ownUsernameInput.replace(/^@/, '').trim()
+    if (!cleanUsername) {
+      setCreateOwnError('Insira um nome de usuário válido.')
+      return
+    }
+    setCreatingOwn(true)
+    setCreateOwnError(null)
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: user.id,
+          instagram_username: cleanUsername,
+          profile_type: 'own',
+        })
+        .select()
+        .single()
+      if (error) {
+        if (error.code === '23505') {
+          setCreateOwnError('Esse perfil já está cadastrado.')
+        } else {
+          setCreateOwnError(error.message)
+        }
+        setCreatingOwn(false)
+        return
+      }
+      addProfile(data as Profile)
+      await refetchProfiles()
+      setOwnUsernameInput('')
+      // Trigger scraping immediately
+      scrapeProfile([cleanUsername], 'own').catch((err) => {
+        console.error('Scrape trigger failed:', err)
+      })
+    } catch (err) {
+      setCreateOwnError(err instanceof Error ? err.message : 'Erro desconhecido.')
+    } finally {
+      setCreatingOwn(false)
+    }
+  }
+
+  async function handleScrapeOwn() {
+    if (!ownProfile) return
+    setScrapeError(null)
+    setScrapeStatus('starting')
+    setScrapeProgress(0)
+    try {
+      const { job_id } = await scrapeProfile([ownProfile.instagram_username], 'own')
+      setScrapeStatus('processing')
+      const cancelled = false
+      const poll = async () => {
+        while (!cancelled) {
+          try {
+            const job = await getJobStatus(job_id)
+            setScrapeProgress(job.progress)
+            if (job.status === 'completed') {
+              setScrapeStatus('success')
+              setScrapeProgress(100)
+              setReelsRefreshKey((k) => k + 1)
+              setTimeout(() => { if (!cancelled) setScrapeStatus('idle') }, 4000)
+              return
+            }
+            if (job.status === 'failed') {
+              setScrapeStatus('error')
+              setScrapeError(job.error_message ?? 'Falha no processamento')
+              setTimeout(() => { if (!cancelled) setScrapeStatus('idle') }, 8000)
+              return
+            }
+          } catch {
+            // continue polling
+          }
+          await new Promise((r) => setTimeout(r, 3000))
+        }
+      }
+      poll()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setScrapeError(msg)
+      setScrapeStatus('error')
+      setTimeout(() => setScrapeStatus('idle'), 8000)
+    }
+  }
 
   const modelProvider = useAppStore((s) => s.modelProvider)
   const modelId = useAppStore((s) => s.modelId)
@@ -76,20 +175,48 @@ export default function VoiceProfilePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Voice Profile</h1>
+          <h1 className="text-xl font-bold text-foreground">Estilo de Fala</h1>
           <p className="text-sm text-muted-foreground">
             Tom de fala extraído dos seus vídeos
           </p>
         </div>
-        {voiceProfile && (
-          <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generating}>
-            <RefreshCw className="size-3" />
-            Regenerar
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {ownProfile && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleScrapeOwn}
+              disabled={scrapeStatus === 'starting' || scrapeStatus === 'processing'}
+              className={cn(
+                scrapeStatus === 'processing' && 'border-primary/50 bg-primary/5 text-primary',
+                scrapeStatus === 'success' && 'border-accent/50 bg-accent/10 text-accent',
+                scrapeStatus === 'error' && 'border-destructive/50 bg-destructive/10 text-destructive',
+              )}
+            >
+              {scrapeStatus === 'idle' && (<><Download className="size-3" />Extrair meus vídeos</>)}
+              {scrapeStatus === 'starting' && (<><Loader2 className="size-3 animate-spin" />Iniciando...</>)}
+              {scrapeStatus === 'processing' && (<><Loader2 className="size-3 animate-spin" />Extraindo{scrapeProgress > 0 ? ` ${scrapeProgress}%` : '...'}</>)}
+              {scrapeStatus === 'success' && (<><Check className="size-3" />Concluído!</>)}
+              {scrapeStatus === 'error' && (<><X className="size-3" />Falhou — tentar novamente</>)}
+            </Button>
+          )}
+          {voiceProfile && (
+            <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generating}>
+              <RefreshCw className="size-3" />
+              Regenerar
+            </Button>
+          )}
+        </div>
       </div>
+
+      {scrapeError && scrapeStatus === 'error' && (
+        <div className="flex items-start gap-2 rounded-lg bg-destructive/5 border border-destructive/20 px-3 py-2">
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+          <p className="text-xs text-destructive">{scrapeError}</p>
+        </div>
+      )}
 
       {/* Active jobs */}
       {vpJobs.length > 0 && (
@@ -104,17 +231,45 @@ export default function VoiceProfilePage() {
         </Card>
       )}
 
-      {/* No own profile */}
+      {/* No own profile — form to create */}
       {!ownProfile && (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
-          <Mic className="size-10 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Adicione seu perfil do Instagram primeiro
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Vá em Perfis e adicione um perfil do tipo "Meu Perfil"
-          </p>
-        </div>
+        <Card>
+          <CardContent className="space-y-4 pt-4">
+            <div className="flex items-center gap-2">
+              <Mic className="size-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">
+                Cadastre seu perfil do Instagram
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Vamos analisar seus vídeos para extrair seu estilo de fala
+              (vocabulário, ritmo, expressões frequentes, tom).
+            </p>
+            <form onSubmit={handleCreateOwn} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="own-username">Seu @ do Instagram</Label>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-muted-foreground">@</span>
+                  <Input
+                    id="own-username"
+                    placeholder="seu_usuario"
+                    value={ownUsernameInput}
+                    onChange={(e) => setOwnUsernameInput(e.target.value)}
+                    disabled={creatingOwn}
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <Button type="submit" disabled={creatingOwn || !ownUsernameInput.trim()}>
+                {creatingOwn ? <Loader2 className="size-4 animate-spin" /> : <Mic className="size-4" />}
+                Cadastrar e extrair
+              </Button>
+            </form>
+            {createOwnError && (
+              <p className="text-xs text-destructive">{createOwnError}</p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Voice profile exists */}
@@ -298,14 +453,27 @@ export default function VoiceProfilePage() {
       )}
 
       {ownProfile && ownReels.length === 0 && !voiceProfile && (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] py-16">
           <Mic className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             Nenhum reel encontrado no seu perfil
           </p>
           <p className="text-xs text-muted-foreground">
-            Faça o scraping do seu perfil primeiro
+            Extraia os vídeos de @{ownProfile.instagram_username} pra começar.
           </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleScrapeOwn}
+            disabled={scrapeStatus === 'starting' || scrapeStatus === 'processing'}
+            className="border-[rgba(59,130,246,0.25)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.08)]"
+          >
+            {scrapeStatus === 'idle' && (<><Download className="size-3" />Extrair meus vídeos</>)}
+            {scrapeStatus === 'starting' && (<><Loader2 className="size-3 animate-spin" />Iniciando...</>)}
+            {scrapeStatus === 'processing' && (<><Loader2 className="size-3 animate-spin" />Extraindo{scrapeProgress > 0 ? ` ${scrapeProgress}%` : '...'}</>)}
+            {scrapeStatus === 'success' && (<><Check className="size-3" />Concluído!</>)}
+            {scrapeStatus === 'error' && (<><X className="size-3" />Tentar novamente</>)}
+          </Button>
         </div>
       )}
     </div>

@@ -36,6 +36,7 @@ export function useVoiceProfile() {
   }, [user])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchVoiceProfile()
   }, [fetchVoiceProfile])
 

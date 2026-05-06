@@ -34,6 +34,7 @@ export function useScripts() {
   }, [user])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchScripts()
   }, [fetchScripts])
 
@@ -70,6 +71,7 @@ export function useScript(scriptId: string | undefined) {
   }, [scriptId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchScript()
   }, [fetchScript])
 

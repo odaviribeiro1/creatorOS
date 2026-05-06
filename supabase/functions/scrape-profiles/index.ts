@@ -143,22 +143,37 @@ async function upsertProfile(
   username: string,
   profileType: 'reference' | 'own'
 ): Promise<string> {
-  const { data, error } = await supabase
+  const { data: existing, error: selectError } = await supabase
     .from('profiles')
-    .upsert(
-      {
-        user_id: userId,
-        instagram_username: username,
-        profile_type: profileType,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id,instagram_username' }
-    )
+    .select('id')
+    .eq('user_id', userId)
+    .eq('instagram_username', username)
+    .maybeSingle()
+
+  if (selectError) throw new Error(`Failed to check profile ${username}: ${selectError.message}`)
+
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', existing.id)
+    if (updateError) throw new Error(`Failed to update profile ${username}: ${updateError.message}`)
+    return existing.id
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from('profiles')
+    .insert({
+      user_id: userId,
+      instagram_username: username,
+      profile_type: profileType,
+      updated_at: new Date().toISOString(),
+    })
     .select('id')
     .single()
 
-  if (error) throw new Error(`Failed to upsert profile ${username}: ${error.message}`)
-  return data.id
+  if (insertError) throw new Error(`Failed to insert profile ${username}: ${insertError.message}`)
+  return inserted.id
 }
 
 async function insertReels(
@@ -386,8 +401,7 @@ serve(async (req: Request) => {
     // Deno Deploy / Supabase Edge Functions support EdgeRuntime.waitUntil
     // to keep the function alive after the response is sent
     try {
-      // deno-lint-ignore no-explicit-any
-      const runtime = (globalThis as any).EdgeRuntime
+      const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime
       if (runtime?.waitUntil) {
         runtime.waitUntil(backgroundTask)
       }

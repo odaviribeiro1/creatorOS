@@ -28,6 +28,7 @@ export default function InvitePage() {
 
   useEffect(() => {
     if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValidating(false)
       return
     }

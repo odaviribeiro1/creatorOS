@@ -31,15 +31,12 @@ export function AddProfileModal({
   const addProfile = useAppStore((s) => s.addProfile)
 
   const [username, setUsername] = useState('')
-  const [profileType, setProfileType] = useState<'reference' | 'own'>(
-    'reference'
-  )
+  const profileType = 'reference' as const
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function resetForm() {
     setUsername('')
-    setProfileType('reference')
     setError(null)
   }
 
@@ -84,7 +81,7 @@ export function AddProfileModal({
       addProfile(data as Profile)
 
       // Trigger scraping in background (non-blocking)
-      scrapeProfile([cleanUsername]).catch((err) => {
+      scrapeProfile([cleanUsername], profileType).catch((err) => {
         console.error('Scrape trigger failed:', err)
       })
 
@@ -103,9 +100,9 @@ export function AddProfileModal({
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Adicionar Perfil</DialogTitle>
+            <DialogTitle>Adicionar Perfil de Referência</DialogTitle>
             <DialogDescription>
-              Insira o nome de usuário do Instagram para análise.
+              Insira o @ do Instagram de um concorrente ou criador que você quer analisar.
             </DialogDescription>
           </DialogHeader>
 
@@ -122,40 +119,6 @@ export function AddProfileModal({
                   disabled={loading}
                   autoFocus
                 />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label>Tipo de Perfil</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={profileType === 'reference' ? 'default' : 'outline'}
-                  size="sm"
-                  className={
-                    profileType === 'reference'
-                      ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
-                      : ''
-                  }
-                  onClick={() => setProfileType('reference')}
-                  disabled={loading}
-                >
-                  Perfil de Referência
-                </Button>
-                <Button
-                  type="button"
-                  variant={profileType === 'own' ? 'default' : 'outline'}
-                  size="sm"
-                  className={
-                    profileType === 'own'
-                      ? 'bg-accent/20 text-accent hover:bg-accent/30'
-                      : ''
-                  }
-                  onClick={() => setProfileType('own')}
-                  disabled={loading}
-                >
-                  Meu Perfil
-                </Button>
               </div>
             </div>
 

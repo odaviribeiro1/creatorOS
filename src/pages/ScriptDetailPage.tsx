@@ -60,6 +60,7 @@ export default function ScriptDetailPage() {
   const [viewingVersion, setViewingVersion] = useState<string | null>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (script) setEditedText(script.script_teleprompter)
   }, [script])
 

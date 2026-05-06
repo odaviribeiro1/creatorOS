@@ -45,6 +45,7 @@ export function useAnalysis(reelId: string | undefined) {
   }, [reelId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAnalysis()
   }, [fetchAnalysis])
 
@@ -95,6 +96,7 @@ export function useAnalysisList() {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAnalyses()
   }, [fetchAnalyses])
 

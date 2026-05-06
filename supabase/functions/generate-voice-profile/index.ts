@@ -65,11 +65,49 @@ Retorne APENAS um JSON válido com esta estrutura:
   "full_profile_document": "Documento completo e detalhado descrevendo o tom de fala do criador, com exemplos concretos. Deve ser suficiente para reproduzir fielmente o tom ao escrever roteiros."
 }`
 
+function isReasoningModel(modelId: string): boolean {
+  return /^gpt-5/i.test(modelId) || /^o[1-9]/i.test(modelId)
+}
+
+function extractResponsesText(result: Record<string, unknown>): string {
+  if (typeof result.output_text === 'string') return result.output_text
+  const output = result.output as unknown
+  if (!Array.isArray(output)) return ''
+  let text = ''
+  for (const item of output) {
+    if (item && typeof item === 'object' && 'content' in item && Array.isArray((item as { content: unknown[] }).content)) {
+      for (const c of (item as { content: Array<Record<string, unknown>> }).content) {
+        if ((c.type === 'output_text' || c.type === 'text') && typeof c.text === 'string') text += c.text
+      }
+    }
+  }
+  return text
+}
+
 async function generateWithOpenAI(
   prompt: string,
   openaiKey: string,
   modelId: string
 ): Promise<Record<string, unknown>> {
+  if (isReasoningModel(modelId)) {
+    const response = await fetchWithRetry('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+      body: JSON.stringify({
+        model: modelId,
+        input: prompt,
+        reasoning: { effort: 'low' },
+        text: { verbosity: 'medium', format: { type: 'json_object' } },
+      }),
+    })
+    if (!response.ok) throw new Error(`OpenAI Responses API failed (${response.status}): ${await response.text()}`)
+    const result = await response.json()
+    const text = extractResponsesText(result) || '{}'
+    try { return JSON.parse(text) } catch {
+      const m = text.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : {}
+    }
+  }
+
   const response = await fetchWithRetry('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -286,7 +324,7 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const body: GenerateVPRequest = await req.json()
-    const { profile_id, reel_ids, user_id, model_provider = 'openai', model_id = 'gpt-4o' } = body
+    const { profile_id, reel_ids, user_id, model_provider = 'openai', model_id = 'gpt-5.5' } = body
 
     if (!profile_id || !reel_ids || reel_ids.length === 0 || !user_id) {
       return new Response(JSON.stringify({ error: 'profile_id, reel_ids, and user_id are required' }), {
@@ -314,8 +352,7 @@ serve(async (req: Request) => {
     )
 
     try {
-      // deno-lint-ignore no-explicit-any
-      const runtime = (globalThis as any).EdgeRuntime
+      const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime
       if (runtime?.waitUntil) runtime.waitUntil(backgroundTask)
     } catch {
       backgroundTask.catch((err) => log('error', 'Background task failed', { error: String(err) }))
