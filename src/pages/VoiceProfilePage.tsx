@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { Mic, Loader2, RefreshCw, Quote, Zap, Download, Check, X, AlertCircle } from 'lucide-react'
+import { Mic, Loader2, RefreshCw, Quote, Zap, Download, Check, X, AlertCircle, Eye, Film } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
+import { cn, formatNumber } from '@/lib/utils'
 import { ModelSelector } from '@/components/shared/ModelSelector'
 import { useVoiceProfile } from '@/hooks/useVoiceProfile'
 import { useProfiles } from '@/hooks/useProfiles'
@@ -16,6 +16,26 @@ import supabase from '@/lib/supabase'
 import type { Profile, Reel } from '@/types'
 
 type ButtonStatus = 'idle' | 'starting' | 'processing' | 'success' | 'error'
+
+function ReelThumb({ src, alt }: { src: string | null; alt: string }) {
+  const [error, setError] = useState(false)
+  if (!src || error) {
+    return (
+      <div className="flex size-full items-center justify-center bg-gradient-to-br from-[rgba(59,130,246,0.15)] to-[rgba(37,99,235,0.05)]">
+        <Film className="size-6 text-muted-foreground/50" />
+      </div>
+    )
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="size-full object-cover"
+      onError={() => setError(true)}
+      referrerPolicy="no-referrer"
+    />
+  )
+}
 
 export default function VoiceProfilePage() {
   const { voiceProfile, loading } = useVoiceProfile()
@@ -436,36 +456,45 @@ export default function VoiceProfilePage() {
 
             <ModelSelector compact />
 
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {ownReels.map((reel) => (
-                <button
-                  key={reel.id}
-                  className={`flex items-center gap-2 rounded-lg border p-2 text-left transition-colors ${
-                    selectedReels.has(reel.id)
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-muted-foreground'
-                  }`}
-                  onClick={() => toggleReel(reel.id)}
-                >
-                  {reel.thumbnail_url ? (
-                    <img
-                      src={reel.thumbnail_url}
-                      alt=""
-                      className="size-10 shrink-0 rounded object-cover"
-                    />
-                  ) : (
-                    <div className="size-10 shrink-0 rounded bg-muted" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-xs text-muted-foreground">
-                      {reel.caption?.slice(0, 50) ?? 'Sem legenda'}
-                    </p>
-                    <Badge className="mt-0.5 bg-accent/20 text-accent text-[10px]">
-                      {reel.engagement_score} eng
-                    </Badge>
-                  </div>
-                </button>
-              ))}
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+              {ownReels.map((reel) => {
+                const isSelected = selectedReels.has(reel.id)
+                return (
+                  <button
+                    key={reel.id}
+                    onClick={() => toggleReel(reel.id)}
+                    className={cn(
+                      'group relative flex flex-col gap-2 overflow-hidden rounded-lg border p-2 text-left transition-colors',
+                      isSelected
+                        ? 'border-accent bg-accent/5'
+                        : 'border-border hover:border-muted-foreground',
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'absolute right-2 top-2 z-10 flex size-5 items-center justify-center rounded border-2 transition-colors',
+                        isSelected
+                          ? 'border-accent bg-accent text-white'
+                          : 'border-muted-foreground/40 bg-background/80 backdrop-blur-sm',
+                      )}
+                    >
+                      {isSelected && <Check className="size-3" strokeWidth={3} />}
+                    </div>
+                    <div className="relative aspect-[9/16] w-full overflow-hidden rounded">
+                      <ReelThumb src={reel.thumbnail_url} alt={reel.caption ?? ''} />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="line-clamp-2 text-xs text-muted-foreground">
+                        {reel.caption?.slice(0, 80) ?? 'Sem legenda'}
+                      </p>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Eye className="size-3 text-[#3B82F6]" />
+                        <span>{formatNumber(reel.views_count)} views</span>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </CardContent>
         </Card>
