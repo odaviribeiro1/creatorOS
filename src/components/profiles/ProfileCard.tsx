@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store'
-import { scrapeProfile, generateVoiceProfile } from '@/lib/api'
+import { scrapeProfile, generateVoiceProfile, cancelJob } from '@/lib/api'
 import { formatNumber, formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
 import type { Profile } from '@/types'
@@ -126,6 +126,15 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
       setScrapeError(msg)
       setScrapeStatus('error')
       setTimeout(() => setScrapeStatus('idle'), 8000)
+    }
+  }
+
+  async function handleCancel(e: React.MouseEvent, jobId: string) {
+    e.stopPropagation()
+    try {
+      await cancelJob(jobId)
+    } catch (err) {
+      console.error('Cancel failed:', err)
     }
   }
 
@@ -276,6 +285,18 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
             </div>
           )}
 
+          {scrapeJob && scrapeStatus === 'processing' && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={(e) => handleCancel(e, scrapeJob.id)}
+                className="text-[10px] text-muted-foreground transition-colors hover:text-destructive"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
           {scrapeError && scrapeStatus === 'error' && (
             <div className="flex items-start gap-1.5 rounded bg-destructive/5 px-2 py-1">
               <AlertCircle className="mt-0.5 size-3 shrink-0 text-destructive" />
@@ -351,6 +372,18 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
                   )}
                   style={voiceStatus === 'processing' ? { width: `${Math.max(voiceProgress, 5)}%` } : undefined}
                 />
+              </div>
+            )}
+
+            {voiceJob && voiceStatus === 'processing' && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={(e) => handleCancel(e, voiceJob.id)}
+                  className="text-[10px] text-muted-foreground transition-colors hover:text-destructive"
+                >
+                  Cancelar
+                </button>
               </div>
             )}
 

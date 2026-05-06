@@ -281,7 +281,7 @@ async function processInBackground(
       status: 'completed', progress: 100,
       output_data: { transcriptions_used: available.length, model: `${modelProvider}/${modelId}` },
       completed_at: new Date().toISOString(),
-    }).eq('id', jobId)
+    }).eq('id', jobId).in('status', ['pending', 'processing'])
 
     log('info', 'Voice profile generated', { jobId })
   } catch (error) {
@@ -289,7 +289,7 @@ async function processInBackground(
     log('error', 'Voice profile generation failed', { jobId, error: errorMessage })
     await supabase.from('processing_jobs').update({
       status: 'failed', error_message: errorMessage, completed_at: new Date().toISOString(),
-    }).eq('id', jobId)
+    }).eq('id', jobId).in('status', ['pending', 'processing'])
   }
 }
 

@@ -288,7 +288,12 @@ async function updateJobProgress(
   extraFields?: Record<string, unknown>
 ) {
   const updateData: Record<string, unknown> = { progress, ...extraFields }
-  const { error } = await supabase.from('processing_jobs').update(updateData).eq('id', jobId)
+  // Skip update if user already cancelled the job
+  const { error } = await supabase
+    .from('processing_jobs')
+    .update(updateData)
+    .eq('id', jobId)
+    .in('status', ['pending', 'processing'])
   if (error) {
     log('warn', `Failed to update job ${jobId} progress`, { error: error.message })
   }
@@ -343,7 +348,7 @@ async function processInBackground(
       await updateJobProgress(supabase, jobId, progress)
     }
 
-    // Mark job as completed
+    // Mark job as completed (no-op if user already cancelled)
     await supabase
       .from('processing_jobs')
       .update({
@@ -353,6 +358,7 @@ async function processInBackground(
         completed_at: new Date().toISOString(),
       })
       .eq('id', jobId)
+      .in('status', ['pending', 'processing'])
 
     log('info', `Job completed successfully`, { jobId, totalReels })
   } catch (error) {
@@ -367,6 +373,7 @@ async function processInBackground(
         completed_at: new Date().toISOString(),
       })
       .eq('id', jobId)
+      .in('status', ['pending', 'processing'])
   }
 }
 

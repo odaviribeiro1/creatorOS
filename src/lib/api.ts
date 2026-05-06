@@ -30,6 +30,22 @@ export async function scrapeProfile(
   return data as { job_id: string };
 }
 
+export async function cancelJob(jobId: string): Promise<void> {
+  const { error } = await supabase
+    .from('processing_jobs')
+    .update({
+      status: 'cancelled',
+      error_message: 'Cancelado pelo usuário',
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', jobId)
+    .in('status', ['pending', 'processing']);
+
+  if (error) {
+    throw new Error(`Falha ao cancelar: ${error.message}`);
+  }
+}
+
 export async function getJobStatus(jobId: string): Promise<ProcessingJob> {
   const { data, error } = await supabase
     .from('processing_jobs')

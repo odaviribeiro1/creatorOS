@@ -297,7 +297,7 @@ serve(async (req: Request) => {
           progress: 100,
           output_data: { reel_id: reel.id, profile_id: profile.id, username },
           completed_at: new Date().toISOString(),
-        }).eq('id', job.id)
+        }).eq('id', job.id).in('status', ['pending', 'processing'])
 
         log('info', 'Reel URL scrape completed', { reelId: reel.id, username })
       } catch (error) {
@@ -307,7 +307,7 @@ serve(async (req: Request) => {
           status: 'failed',
           error_message: errorMessage,
           completed_at: new Date().toISOString(),
-        }).eq('id', job.id)
+        }).eq('id', job.id).in('status', ['pending', 'processing'])
       }
     })()
 

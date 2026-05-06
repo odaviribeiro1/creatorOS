@@ -247,7 +247,7 @@ export type ProcessingJob = {
   id: string;
   user_id: string;
   job_type: 'scrape' | 'analyze' | 'voice_profile' | 'generate_script';
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   input_data: Record<string, unknown> | null;
   output_data: Record<string, unknown> | null;
   error_message: string | null;

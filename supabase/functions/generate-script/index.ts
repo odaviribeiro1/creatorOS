@@ -295,7 +295,7 @@ async function processInBackground(
       status: 'completed', progress: 100,
       output_data: { title: scriptRecord.title, model: `${model_provider}/${model_id}` },
       completed_at: new Date().toISOString(),
-    }).eq('id', jobId)
+    }).eq('id', jobId).in('status', ['pending', 'processing'])
 
     log('info', 'Script generated', { jobId })
   } catch (error) {
@@ -303,7 +303,7 @@ async function processInBackground(
     log('error', 'Script generation failed', { jobId, error: errorMessage })
     await supabase.from('processing_jobs').update({
       status: 'failed', error_message: errorMessage, completed_at: new Date().toISOString(),
-    }).eq('id', jobId)
+    }).eq('id', jobId).in('status', ['pending', 'processing'])
   }
 }
 

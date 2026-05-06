@@ -10,7 +10,7 @@ import { ModelSelector } from '@/components/shared/ModelSelector'
 import { useVoiceProfile } from '@/hooks/useVoiceProfile'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useAppStore } from '@/store'
-import { generateVoiceProfile, scrapeProfile } from '@/lib/api'
+import { generateVoiceProfile, scrapeProfile, cancelJob } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
 import type { Profile, Reel } from '@/types'
@@ -281,6 +281,15 @@ export default function VoiceProfilePage() {
               Regenerar
             </Button>
           )}
+          {ownScrapeJob && scrapeStatus === 'processing' && (
+            <button
+              type="button"
+              onClick={() => cancelJob(ownScrapeJob.id).catch(() => {})}
+              className="text-xs text-muted-foreground transition-colors hover:text-destructive"
+            >
+              Cancelar
+            </button>
+          )}
         </div>
       </div>
 
@@ -294,12 +303,21 @@ export default function VoiceProfilePage() {
       {/* Active jobs */}
       {vpJobs.length > 0 && (
         <Card className="border-[rgba(59,130,246,0.3)]">
-          <CardContent className="flex items-center gap-3 pt-6">
-            <Loader2 className="size-5 animate-spin text-primary" />
-            <span className="text-sm">
-              Gerando Voice Profile...
-              {vpJobs[0]?.progress > 0 && ` (${vpJobs[0].progress}%)`}
-            </span>
+          <CardContent className="flex items-center justify-between gap-3 pt-6">
+            <div className="flex items-center gap-3">
+              <Loader2 className="size-5 animate-spin text-primary" />
+              <span className="text-sm">
+                Gerando Voice Profile...
+                {vpJobs[0]?.progress > 0 && ` (${vpJobs[0].progress}%)`}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => cancelJob(vpJobs[0].id).catch(() => {})}
+              className="text-xs text-muted-foreground transition-colors hover:text-destructive"
+            >
+              Cancelar
+            </button>
           </CardContent>
         </Card>
       )}
