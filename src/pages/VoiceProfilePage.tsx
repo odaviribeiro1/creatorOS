@@ -38,7 +38,7 @@ function ReelThumb({ src, alt }: { src: string | null; alt: string }) {
 }
 
 export default function VoiceProfilePage() {
-  const { voiceProfile, loading } = useVoiceProfile()
+  const { voiceProfile, loading, refetch: refetchVoiceProfile } = useVoiceProfile()
   const { profiles, refetch: refetchProfiles } = useProfiles()
   const activeJobs = useAppStore((s) => s.activeJobs)
   const user = useAppStore((s) => s.user)
@@ -59,6 +59,9 @@ export default function VoiceProfilePage() {
   const vpJobs = activeJobs.filter(
     (j) => j.job_type === 'voice_profile' && (j.status === 'pending' || j.status === 'processing')
   )
+  const activeVPJob = vpJobs[0]
+  const vpProgress = activeVPJob?.progress ?? 0
+  const isGenerating = !!activeVPJob
 
   const ownScrapeJob = ownProfile
     ? activeJobs.find((j) => {
@@ -69,6 +72,32 @@ export default function VoiceProfilePage() {
     : undefined
 
   const trackedJobRef = useRef<string | null>(null)
+  const trackedVPJobRef = useRef<string | null>(null)
+  const [vpError, setVpError] = useState<string | null>(null)
+
+  // Track active vp job ID; when it transitions to completed/failed, refetch profile
+  useEffect(() => {
+    if (activeVPJob) {
+      trackedVPJobRef.current = activeVPJob.id
+      setVpError(null)
+      return
+    }
+    const tracked = trackedVPJobRef.current
+    if (!tracked) return
+    const finished = activeJobs.find(
+      (j) => j.id === tracked && (j.status === 'completed' || j.status === 'failed')
+    )
+    if (!finished) return
+    trackedVPJobRef.current = null
+    if (finished.status === 'completed') {
+      refetchVoiceProfile()
+    } else {
+      setVpError(finished.error_message ?? 'Falha ao gerar Voice Profile')
+      const t = setTimeout(() => setVpError(null), 8000)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeVPJob?.id, activeJobs])
 
   useEffect(() => {
     if (!ownScrapeJob) return
@@ -186,12 +215,17 @@ export default function VoiceProfilePage() {
   async function handleGenerate() {
     if (!ownProfile || selectedReels.size === 0) return
     setGenerating(true)
+    setVpError(null)
     try {
       await generateVoiceProfile(ownProfile.id, Array.from(selectedReels), modelProvider, modelId)
-    } catch {
-      // Job tracks errors
+      // Job is now in flight. The useEffect watching activeVPJob picks it up
+      // via Realtime and drives the button state until completion.
+    } catch (err) {
+      setVpError(err instanceof Error ? err.message : 'Erro ao iniciar geração')
+      setTimeout(() => setVpError(null), 8000)
+    } finally {
+      setGenerating(false)
     }
-    setGenerating(false)
   }
 
   function toggleReel(reelId: string) {
@@ -437,10 +471,12 @@ export default function VoiceProfilePage() {
               <Button
                 size="sm"
                 onClick={handleGenerate}
-                disabled={generating || selectedReels.size < 3}
+                disabled={generating || isGenerating || selectedReels.size < 3}
               >
                 {generating ? (
-                  <Loader2 className="size-3 animate-spin" />
+                  <><Loader2 className="size-3 animate-spin" />Iniciando...</>
+                ) : isGenerating ? (
+                  <><Loader2 className="size-3 animate-spin" />Gerando{vpProgress > 0 ? ` ${vpProgress}%` : '...'}</>
                 ) : (
                   <>
                     <Mic className="size-3" />
@@ -449,6 +485,12 @@ export default function VoiceProfilePage() {
                 )}
               </Button>
             </div>
+            {vpError && (
+              <div className="flex items-start gap-2 rounded-lg bg-destructive/5 border border-destructive/20 px-3 py-2">
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+                <p className="text-xs text-destructive">{vpError}</p>
+              </div>
+            )}
 
             <p className="text-xs text-muted-foreground">
               Selecione pelo menos 5 vídeos para um resultado mais preciso (mínimo 3).
