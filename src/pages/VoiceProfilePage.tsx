@@ -480,7 +480,7 @@ export default function VoiceProfilePage() {
                     >
                       {isSelected && <Check className="size-3" strokeWidth={3} />}
                     </div>
-                    <div className="relative aspect-[9/16] w-full overflow-hidden rounded">
+                    <div className="relative aspect-[9/16] max-h-48 w-full overflow-hidden rounded">
                       <ReelThumb src={reel.thumbnail_url} alt={reel.caption ?? ''} />
                     </div>
                     <div className="space-y-1">
