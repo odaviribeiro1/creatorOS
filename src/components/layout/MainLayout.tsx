@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { APP_NAME } from '@/lib/brand'
 import { cn } from '@/lib/utils'
+import { useProcessingJobs } from '@/hooks/useProcessingJobs'
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -30,6 +31,11 @@ export function MainLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const location = useLocation()
   const title = getPageTitle(location.pathname)
+
+  // Mounts the global Realtime subscription that keeps activeJobs in sync.
+  // Without this, pages that derive UI from activeJobs (Voice Profile scrape
+  // status, voice-profile generation card, etc.) never advance from 'starting'.
+  useProcessingJobs()
 
   return (
     <div className="min-h-screen">
