@@ -106,7 +106,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </span>
           {!collapsed && (
             <span className="text-xs text-[#60A5FA]">
-              {activeCount} job{activeCount > 1 ? 's' : ''} ativo{activeCount > 1 ? 's' : ''}
+              {activeCount} {activeCount > 1 ? 'ações ativas' : 'ação ativa'}
             </span>
           )}
         </div>
