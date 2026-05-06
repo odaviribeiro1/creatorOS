@@ -1,21 +1,41 @@
-import { useState, useEffect } from 'react'
-import { Mic, Loader2, RefreshCw, Quote, Zap, Download, Check, X, AlertCircle } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Mic, Loader2, RefreshCw, Quote, Zap, Download, Check, X, AlertCircle, Eye, Film } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
+import { cn, formatNumber } from '@/lib/utils'
 import { ModelSelector } from '@/components/shared/ModelSelector'
 import { useVoiceProfile } from '@/hooks/useVoiceProfile'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useAppStore } from '@/store'
-import { generateVoiceProfile, scrapeProfile, getJobStatus } from '@/lib/api'
+import { generateVoiceProfile, scrapeProfile } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
 import type { Profile, Reel } from '@/types'
 
 type ButtonStatus = 'idle' | 'starting' | 'processing' | 'success' | 'error'
+
+function ReelThumb({ src, alt }: { src: string | null; alt: string }) {
+  const [error, setError] = useState(false)
+  if (!src || error) {
+    return (
+      <div className="flex size-full items-center justify-center bg-gradient-to-br from-[rgba(59,130,246,0.15)] to-[rgba(37,99,235,0.05)]">
+        <Film className="size-6 text-muted-foreground/50" />
+      </div>
+    )
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="size-full object-cover"
+      onError={() => setError(true)}
+      referrerPolicy="no-referrer"
+    />
+  )
+}
 
 export default function VoiceProfilePage() {
   const { voiceProfile, loading } = useVoiceProfile()
@@ -39,6 +59,49 @@ export default function VoiceProfilePage() {
   const vpJobs = activeJobs.filter(
     (j) => j.job_type === 'voice_profile' && (j.status === 'pending' || j.status === 'processing')
   )
+
+  const ownScrapeJob = ownProfile
+    ? activeJobs.find((j) => {
+        if (j.job_type !== 'scrape') return false
+        const usernames = (j.input_data as { usernames?: unknown })?.usernames
+        return Array.isArray(usernames) && usernames.includes(ownProfile.instagram_username)
+      })
+    : undefined
+
+  const trackedJobRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!ownScrapeJob) return
+
+    if (ownScrapeJob.status === 'pending' || ownScrapeJob.status === 'processing') {
+      setScrapeStatus('processing')
+      setScrapeProgress(ownScrapeJob.progress)
+      setScrapeError(null)
+      trackedJobRef.current = ownScrapeJob.id
+      return
+    }
+
+    if (trackedJobRef.current !== ownScrapeJob.id) return
+
+    if (ownScrapeJob.status === 'completed') {
+      setScrapeStatus('success')
+      setScrapeProgress(100)
+      setReelsRefreshKey((k) => k + 1)
+      trackedJobRef.current = null
+      const t = setTimeout(() => setScrapeStatus('idle'), 4000)
+      return () => clearTimeout(t)
+    }
+
+    if (ownScrapeJob.status === 'failed') {
+      setScrapeStatus('error')
+      setScrapeError(ownScrapeJob.error_message ?? 'Falha no processamento')
+      trackedJobRef.current = null
+      const t = setTimeout(() => setScrapeStatus('idle'), 8000)
+      return () => clearTimeout(t)
+    }
+    // Watching specific fields (not the whole object) to avoid re-runs on store identity churn
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownScrapeJob?.id, ownScrapeJob?.status, ownScrapeJob?.progress, ownScrapeJob?.error_message])
 
   useEffect(() => {
     if (!ownProfile) return
@@ -105,34 +168,10 @@ export default function VoiceProfilePage() {
     setScrapeStatus('starting')
     setScrapeProgress(0)
     try {
-      const { job_id } = await scrapeProfile([ownProfile.instagram_username], 'own')
-      setScrapeStatus('processing')
-      const cancelled = false
-      const poll = async () => {
-        while (!cancelled) {
-          try {
-            const job = await getJobStatus(job_id)
-            setScrapeProgress(job.progress)
-            if (job.status === 'completed') {
-              setScrapeStatus('success')
-              setScrapeProgress(100)
-              setReelsRefreshKey((k) => k + 1)
-              setTimeout(() => { if (!cancelled) setScrapeStatus('idle') }, 4000)
-              return
-            }
-            if (job.status === 'failed') {
-              setScrapeStatus('error')
-              setScrapeError(job.error_message ?? 'Falha no processamento')
-              setTimeout(() => { if (!cancelled) setScrapeStatus('idle') }, 8000)
-              return
-            }
-          } catch {
-            // continue polling
-          }
-          await new Promise((r) => setTimeout(r, 3000))
-        }
-      }
-      poll()
+      await scrapeProfile([ownProfile.instagram_username], 'own')
+      // The job is now in flight. The useEffect watching ownScrapeJob will
+      // pick it up via Supabase Realtime and drive scrapeStatus/progress —
+      // this works even if the user navigates away and comes back.
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setScrapeError(msg)
@@ -417,36 +456,45 @@ export default function VoiceProfilePage() {
 
             <ModelSelector compact />
 
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {ownReels.map((reel) => (
-                <button
-                  key={reel.id}
-                  className={`flex items-center gap-2 rounded-lg border p-2 text-left transition-colors ${
-                    selectedReels.has(reel.id)
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-muted-foreground'
-                  }`}
-                  onClick={() => toggleReel(reel.id)}
-                >
-                  {reel.thumbnail_url ? (
-                    <img
-                      src={reel.thumbnail_url}
-                      alt=""
-                      className="size-10 shrink-0 rounded object-cover"
-                    />
-                  ) : (
-                    <div className="size-10 shrink-0 rounded bg-muted" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-xs text-muted-foreground">
-                      {reel.caption?.slice(0, 50) ?? 'Sem legenda'}
-                    </p>
-                    <Badge className="mt-0.5 bg-accent/20 text-accent text-[10px]">
-                      {reel.engagement_score} eng
-                    </Badge>
-                  </div>
-                </button>
-              ))}
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+              {ownReels.map((reel) => {
+                const isSelected = selectedReels.has(reel.id)
+                return (
+                  <button
+                    key={reel.id}
+                    onClick={() => toggleReel(reel.id)}
+                    className={cn(
+                      'group relative flex flex-col gap-2 overflow-hidden rounded-lg border p-2 text-left transition-colors',
+                      isSelected
+                        ? 'border-accent bg-accent/5'
+                        : 'border-border hover:border-muted-foreground',
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'absolute right-2 top-2 z-10 flex size-5 items-center justify-center rounded border-2 transition-colors',
+                        isSelected
+                          ? 'border-accent bg-accent text-white'
+                          : 'border-muted-foreground/40 bg-background/80 backdrop-blur-sm',
+                      )}
+                    >
+                      {isSelected && <Check className="size-3" strokeWidth={3} />}
+                    </div>
+                    <div className="relative aspect-[9/16] max-h-48 w-full overflow-hidden rounded">
+                      <ReelThumb src={reel.thumbnail_url} alt={reel.caption ?? ''} />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="line-clamp-2 text-xs text-muted-foreground">
+                        {reel.caption?.slice(0, 80) ?? 'Sem legenda'}
+                      </p>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Eye className="size-3 text-[#3B82F6]" />
+                        <span>{formatNumber(reel.views_count)} views</span>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </CardContent>
         </Card>
