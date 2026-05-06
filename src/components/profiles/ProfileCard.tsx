@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Download, Loader2, Mic, Check, X, AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store'
-import { scrapeProfile, generateVoiceProfile, getJobStatus } from '@/lib/api'
+import { scrapeProfile, generateVoiceProfile } from '@/lib/api'
 import { formatNumber, formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
 import type { Profile } from '@/types'
@@ -22,61 +22,84 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
   const navigate = useNavigate()
   const modelProvider = useAppStore((s) => s.modelProvider)
   const modelId = useAppStore((s) => s.modelId)
+  const activeJobs = useAppStore((s) => s.activeJobs)
 
   const [scrapeStatus, setScrapeStatus] = useState<ButtonStatus>('idle')
-  const [scrapeProgress, setScrapeProgress] = useState(0)
   const [voiceStatus, setVoiceStatus] = useState<ButtonStatus>('idle')
-  const [voiceProgress, setVoiceProgress] = useState(0)
   const [hasVoiceProfile, setHasVoiceProfile] = useState<boolean | null>(null)
   const [scrapeError, setScrapeError] = useState<string | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
 
-  // Poll job status until done
-  const pollJob = useCallback(
-    (
-      jobId: string,
-      setStatus: (s: ButtonStatus) => void,
-      setProgress: (p: number) => void,
-      setError: (e: string | null) => void,
-      onComplete?: () => void
-    ) => {
-      let cancelled = false
+  // Find jobs in-flight that match this profile
+  const scrapeJob = activeJobs.find((j) => {
+    if (j.job_type !== 'scrape') return false
+    const usernames = (j.input_data as { usernames?: unknown })?.usernames
+    return Array.isArray(usernames) && usernames.includes(profile.instagram_username)
+  })
+  const voiceJob = activeJobs.find((j) => {
+    if (j.job_type !== 'voice_profile') return false
+    return (j.input_data as { profile_id?: string })?.profile_id === profile.id
+  })
 
-      async function poll() {
-        while (!cancelled) {
-          try {
-            const job = await getJobStatus(jobId)
-            setProgress(job.progress)
+  const scrapeProgress = scrapeJob?.progress ?? 0
+  const voiceProgress = voiceJob?.progress ?? 0
 
-            if (job.status === 'completed') {
-              setStatus('success')
-              setProgress(100)
-              onComplete?.()
-              setTimeout(() => {
-                if (!cancelled) setStatus('idle')
-              }, 4000)
-              return
-            }
-            if (job.status === 'failed') {
-              setStatus('error')
-              setError(job.error_message ?? 'Falha no processamento')
-              setTimeout(() => {
-                if (!cancelled) setStatus('idle')
-              }, 8000)
-              return
-            }
-          } catch {
-            // Continue polling
-          }
-          await new Promise((r) => setTimeout(r, 3000))
-        }
-      }
+  const trackedScrapeRef = useRef<string | null>(null)
+  const trackedVoiceRef = useRef<string | null>(null)
 
-      poll()
-      return () => { cancelled = true }
-    },
-    []
-  )
+  // Drive scrape button state from realtime job
+  useEffect(() => {
+    if (!scrapeJob) return
+    if (scrapeJob.status === 'pending' || scrapeJob.status === 'processing') {
+      setScrapeStatus('processing')
+      setScrapeError(null)
+      trackedScrapeRef.current = scrapeJob.id
+      return
+    }
+    if (trackedScrapeRef.current !== scrapeJob.id) return
+    if (scrapeJob.status === 'completed') {
+      setScrapeStatus('success')
+      onScrapeComplete?.()
+      trackedScrapeRef.current = null
+      const t = setTimeout(() => setScrapeStatus('idle'), 4000)
+      return () => clearTimeout(t)
+    }
+    if (scrapeJob.status === 'failed') {
+      setScrapeStatus('error')
+      setScrapeError(scrapeJob.error_message ?? 'Falha no processamento')
+      trackedScrapeRef.current = null
+      const t = setTimeout(() => setScrapeStatus('idle'), 8000)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrapeJob?.id, scrapeJob?.status, scrapeJob?.error_message])
+
+  // Drive voice button state from realtime job
+  useEffect(() => {
+    if (!voiceJob) return
+    if (voiceJob.status === 'pending' || voiceJob.status === 'processing') {
+      setVoiceStatus('processing')
+      setVoiceError(null)
+      trackedVoiceRef.current = voiceJob.id
+      return
+    }
+    if (trackedVoiceRef.current !== voiceJob.id) return
+    if (voiceJob.status === 'completed') {
+      setVoiceStatus('success')
+      setHasVoiceProfile(true)
+      trackedVoiceRef.current = null
+      const t = setTimeout(() => setVoiceStatus('idle'), 4000)
+      return () => clearTimeout(t)
+    }
+    if (voiceJob.status === 'failed') {
+      setVoiceStatus('error')
+      setVoiceError(voiceJob.error_message ?? 'Falha no processamento')
+      trackedVoiceRef.current = null
+      const t = setTimeout(() => setVoiceStatus('idle'), 8000)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceJob?.id, voiceJob?.status, voiceJob?.error_message])
 
   // Check if voice profile exists (own profiles only)
   useEffect(() => {
@@ -95,11 +118,9 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
     e.stopPropagation()
     setScrapeError(null)
     setScrapeStatus('starting')
-    setScrapeProgress(0)
     try {
-      const { job_id } = await scrapeProfile([profile.instagram_username], profile.profile_type)
-      setScrapeStatus('processing')
-      pollJob(job_id, setScrapeStatus, setScrapeProgress, setScrapeError, onScrapeComplete)
+      await scrapeProfile([profile.instagram_username], profile.profile_type)
+      // Realtime takes over via the useEffect above.
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setScrapeError(msg)
@@ -112,7 +133,6 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
     e.stopPropagation()
     setVoiceError(null)
     setVoiceStatus('starting')
-    setVoiceProgress(0)
     try {
       const { data: reels } = await supabase
         .from('reels')
@@ -129,11 +149,8 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
         return
       }
 
-      const { job_id } = await generateVoiceProfile(profile.id, reelIds, modelProvider, modelId)
-      setVoiceStatus('processing')
-      pollJob(job_id, setVoiceStatus, setVoiceProgress, setVoiceError, () => {
-        setHasVoiceProfile(true)
-      })
+      await generateVoiceProfile(profile.id, reelIds, modelProvider, modelId)
+      // Realtime takes over.
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setVoiceError(msg)
