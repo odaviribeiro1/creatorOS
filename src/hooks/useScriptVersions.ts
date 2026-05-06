@@ -32,6 +32,7 @@ export function useScriptVersions(scriptId: string | undefined) {
   }, [scriptId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchVersions()
   }, [fetchVersions])
 

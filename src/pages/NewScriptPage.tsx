@@ -48,6 +48,7 @@ export default function NewScriptPage() {
   useEffect(() => {
     const refIds = referenceProfiles.map((p) => p.id)
     if (refIds.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadingReels(false)
       return
     }
