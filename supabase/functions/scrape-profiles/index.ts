@@ -176,6 +176,47 @@ async function upsertProfile(
   return inserted.id
 }
 
+// Instagram CDN responds with Cross-Origin-Resource-Policy: same-origin, which
+// blocks direct rendering in the browser. Re-host thumbs in Supabase Storage so
+// they get served with the project's own headers (and survive URL expiry).
+async function downloadThumbnailToStorage(
+  supabase: SupabaseClient,
+  imageUrl: string,
+  instagramId: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(imageUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+      },
+    })
+    if (!res.ok) {
+      log('warn', `Thumbnail fetch failed for ${instagramId}`, { status: res.status })
+      return null
+    }
+    const contentType = res.headers.get('content-type') ?? 'image/jpeg'
+    const ext = contentType.includes('png')
+      ? 'png'
+      : contentType.includes('webp')
+        ? 'webp'
+        : 'jpg'
+    const path = `thumbnails/${instagramId}.${ext}`
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    const { error } = await supabase.storage
+      .from('videos')
+      .upload(path, bytes, { contentType, upsert: true })
+    if (error) {
+      log('warn', `Storage upload failed for ${instagramId}`, { error: error.message })
+      return null
+    }
+    return supabase.storage.from('videos').getPublicUrl(path).data.publicUrl
+  } catch (err) {
+    log('warn', `Thumbnail re-host failed for ${instagramId}`, { error: String(err) })
+    return null
+  }
+}
+
 async function insertReels(
   supabase: SupabaseClient,
   profileId: string,
@@ -190,13 +231,18 @@ async function insertReels(
       continue
     }
 
+    const originalThumb = item.displayUrl ?? null
+    const storedThumb = originalThumb
+      ? await downloadThumbnailToStorage(supabase, originalThumb, instagramId)
+      : null
+
     const reelData = {
       profile_id: profileId,
       instagram_id: instagramId,
       shortcode: item.shortCode ?? null,
       caption: item.caption ?? null,
       video_url: item.videoUrl ?? null,
-      thumbnail_url: item.displayUrl ?? null,
+      thumbnail_url: storedThumb ?? originalThumb,
       duration_seconds: item.videoDuration ?? null,
       likes_count: item.likesCount ?? 0,
       comments_count: item.commentsCount ?? 0,
