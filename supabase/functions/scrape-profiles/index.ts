@@ -222,13 +222,17 @@ async function insertReels(
   profileId: string,
   items: ApifyReelItem[]
 ): Promise<number> {
+  // Process in concurrent batches: each item downloads its thumb and upserts
+  // independently. Limit concurrency to avoid hammering Instagram CDN /
+  // Supabase Storage / DB at once.
+  const BATCH_SIZE = 8
   let insertedCount = 0
 
-  for (const item of items) {
+  async function processItem(item: ApifyReelItem): Promise<boolean> {
     const instagramId = item.id != null ? String(item.id) : null
     if (!instagramId) {
       log('warn', 'Skipping reel with no id', { item: JSON.stringify(item).slice(0, 200) })
-      continue
+      return false
     }
 
     const originalThumb = item.displayUrl ?? null
@@ -261,8 +265,16 @@ async function insertReels(
 
     if (error) {
       log('warn', `Failed to upsert reel ${instagramId}`, { error: error.message })
-    } else {
-      insertedCount++
+      return false
+    }
+    return true
+  }
+
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = items.slice(i, i + BATCH_SIZE)
+    const results = await Promise.allSettled(batch.map(processItem))
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) insertedCount++
     }
   }
 
