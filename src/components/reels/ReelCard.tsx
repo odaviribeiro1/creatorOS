@@ -22,7 +22,7 @@ export function ReelCard({ reel, usedInScript }: ReelCardProps) {
 
   return (
     <Card
-      className="cursor-pointer overflow-hidden"
+      className="cursor-pointer overflow-hidden border-2 border-[rgba(59,130,246,0.25)] transition-all duration-200 hover:border-[rgba(59,130,246,0.65)] hover:shadow-[0_0_20px_rgba(59,130,246,0.18)] hover:-translate-y-0.5"
       onClick={() => navigate(`/analysis/${reel.id}`)}
     >
       {/* Thumbnail */}
