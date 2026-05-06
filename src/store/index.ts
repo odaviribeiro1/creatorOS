@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User } from '@supabase/supabase-js'
 import type { Profile, ProcessingJob, ModelProvider } from '@/types'
+import { MODEL_OPTIONS } from '@/types'
 import type { AppUser } from '@/types/auth'
 
 interface AppState {
@@ -72,15 +73,28 @@ export const useAppStore = create<AppState>()(
 
       // Model preference
       modelProvider: 'openai',
-      modelId: 'gpt-5.5',
+      modelId: 'gpt-5',
       setModel: (modelProvider, modelId) => set({ modelProvider, modelId }),
     }),
     {
       name: 'viralscript-settings',
+      version: 2,
       partialize: (state) => ({
         modelProvider: state.modelProvider,
         modelId: state.modelId,
       }),
+      // Reset preference when persisted modelId is no longer in MODEL_OPTIONS
+      // (e.g. invalid model names like gpt-5.5 / gemini-3-flash from earlier builds)
+      migrate: (persisted) => {
+        const s = persisted as { modelProvider?: ModelProvider; modelId?: string }
+        const valid = MODEL_OPTIONS.some(
+          (o) => o.provider === s.modelProvider && o.model === s.modelId
+        )
+        if (!valid) {
+          return { modelProvider: 'openai', modelId: 'gpt-5' }
+        }
+        return s
+      },
     }
   )
 )

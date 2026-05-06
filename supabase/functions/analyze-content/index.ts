@@ -685,7 +685,7 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const body: AnalyzeRequest = await req.json()
-    const { reel_ids, user_id, model_provider = 'openai', model_id = 'gpt-5.5' } = body
+    const { reel_ids, user_id, model_provider = 'openai', model_id = 'gpt-5' } = body
 
     if (!reel_ids || !Array.isArray(reel_ids) || reel_ids.length === 0) {
       return new Response(JSON.stringify({ error: 'reel_ids must be a non-empty array' }), {

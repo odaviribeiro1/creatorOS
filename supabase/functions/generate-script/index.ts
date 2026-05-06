@@ -338,7 +338,7 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const body: GenerateScriptRequest = await req.json()
-    const { topic, user_id, model_provider = 'openai', model_id = 'gpt-5.5' } = body
+    const { topic, user_id, model_provider = 'openai', model_id = 'gpt-5' } = body
 
     if (!topic || !user_id) {
       return new Response(JSON.stringify({ error: 'topic and user_id are required' }), {
