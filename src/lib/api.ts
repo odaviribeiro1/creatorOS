@@ -96,11 +96,12 @@ export async function scrapeReelUrl(
 export async function analyzeContent(
   reelIds: string[],
   modelProvider: ModelProvider,
-  modelId: string
+  modelId: string,
+  profileId?: string
 ): Promise<{ job_id: string }> {
   const user_id = await getUserId();
   const { data, error } = await supabase.functions.invoke('analyze-content', {
-    body: { reel_ids: reelIds, user_id, model_provider: modelProvider, model_id: modelId },
+    body: { reel_ids: reelIds, user_id, profile_id: profileId, model_provider: modelProvider, model_id: modelId },
   });
 
   if (error) {
