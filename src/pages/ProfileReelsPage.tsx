@@ -25,6 +25,24 @@ export default function ProfileReelsPage() {
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
+  const [analyzedIds, setAnalyzedIds] = useState<Set<string>>(new Set())
+
+  const reloadAnalyzedIds = useCallback(async () => {
+    if (reels.length === 0) {
+      setAnalyzedIds(new Set())
+      return
+    }
+    const { data } = await supabase
+      .from('content_analyses')
+      .select('reel_id')
+      .in('reel_id', reels.map((r) => r.id))
+    setAnalyzedIds(new Set(((data ?? []) as { reel_id: string }[]).map((a) => a.reel_id)))
+  }, [reels])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    reloadAnalyzedIds()
+  }, [reloadAnalyzedIds])
 
   const fetchProfile = useCallback(async () => {
     if (!id) return
@@ -163,7 +181,12 @@ export default function ProfileReelsPage() {
       {!reelsLoading && reels.length > 0 && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {reels.map((reel) => (
-            <ReelCard key={reel.id} reel={reel} />
+            <ReelCard
+              key={reel.id}
+              reel={reel}
+              analyzed={analyzedIds.has(reel.id)}
+              onAnalyzed={reloadAnalyzedIds}
+            />
           ))}
         </div>
       )}
