@@ -22,11 +22,13 @@ export default function AnalysisPage() {
   const { analyses, usedInScriptReelIds, loading, refetch } = useAnalysisList()
   const { profiles } = useProfiles()
   const user = useAppStore((s) => s.user)
+  const activeJobs = useAppStore((s) => s.activeJobs)
   const modelProvider = useAppStore((s) => s.modelProvider)
   const modelId = useAppStore((s) => s.modelId)
 
   const [unanalyzedReels, setUnanalyzedReels] = useState<Reel[]>([])
   const [loadingUnanalyzed, setLoadingUnanalyzed] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0)
   const [analyzeStatus, setAnalyzeStatus] = useState<AnalyzeStatus>('idle')
   const [analyzeProgress, setAnalyzeProgress] = useState(0)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
@@ -143,7 +145,18 @@ export default function AnalysisPage() {
     }
 
     load()
-  }, [user, profiles, analyses.length])
+  }, [user, profiles, analyses.length, reloadKey])
+
+  // Refresh unanalyzed list when a scrape job completes (new reels available)
+  const completedScrapeJobIds = activeJobs
+    .filter((j) => j.job_type === 'scrape' && j.status === 'completed')
+    .map((j) => j.id)
+    .join(',')
+  useEffect(() => {
+    if (completedScrapeJobIds) {
+      setReloadKey((k) => k + 1)
+    }
+  }, [completedScrapeJobIds])
 
   async function handleAnalyze(candidateReelIds: string[]) {
     if (candidateReelIds.length === 0) return

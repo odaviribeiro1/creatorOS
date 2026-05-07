@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Download, Loader2, Mic, Check, X, AlertCircle } from 'lucide-react'
+import { Users, Download, Loader2, Mic, Check, X, AlertCircle, RotateCcw, BarChart3 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -241,10 +241,17 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
             disabled={scrapeStatus === 'starting' || scrapeStatus === 'processing'}
           >
             {scrapeStatus === 'idle' && (
-              <>
-                <Download className="size-3" />
-                Processar
-              </>
+              profile.last_scraped_at ? (
+                <>
+                  <RotateCcw className="size-3" />
+                  Atualizar reels
+                </>
+              ) : (
+                <>
+                  <Download className="size-3" />
+                  Processar
+                </>
+              )
             )}
             {scrapeStatus === 'starting' && (
               <>
@@ -302,6 +309,18 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
               <AlertCircle className="mt-0.5 size-3 shrink-0 text-destructive" />
               <p className="text-[10px] leading-tight text-destructive line-clamp-2">{scrapeError}</p>
             </div>
+          )}
+
+          {profile.last_scraped_at && scrapeStatus !== 'processing' && scrapeStatus !== 'starting' && (
+            <Button
+              variant="outline"
+              size="xs"
+              className="w-full border-accent/30 text-accent hover:bg-accent/10"
+              onClick={(e) => { e.stopPropagation(); navigate('/analysis') }}
+            >
+              <BarChart3 className="size-3" />
+              Analisar reels
+            </Button>
           )}
         </div>
 
