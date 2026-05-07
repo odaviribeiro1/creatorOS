@@ -1,3 +1,4 @@
+import { AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDuration } from '@/lib/utils'
 import type { ContentAnalysis } from '@/types'
@@ -14,6 +15,34 @@ const sections = [
 ]
 
 export function StructureTimeline({ analysis, onSeek }: StructureTimelineProps) {
+  const hookType = (analysis.hook as { type?: string }).type
+  const isFailed =
+    hookType === 'timeout' ||
+    hookType === 'error' ||
+    (analysis.hook.end_ts === 0 && analysis.development.end_ts === 0 && analysis.cta.end_ts === 0)
+
+  if (isFailed) {
+    return (
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Estrutura Narrativa</h3>
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-destructive">
+              {hookType === 'timeout'
+                ? 'Análise expirou (timeout)'
+                : 'Análise falhou'}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              O pipeline (Whisper + Gemini + LLM) não conseguiu concluir essa análise.
+              Volte para o perfil deste reel e clique em <span className="text-foreground">"Analisar este reel"</span> de novo.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const totalDuration = Math.max(
     analysis.hook.end_ts,
     analysis.development.end_ts,
@@ -21,24 +50,34 @@ export function StructureTimeline({ analysis, onSeek }: StructureTimelineProps) 
     1
   )
 
-  function getWidth(startTs: number, endTs: number) {
-    return ((endTs - startTs) / totalDuration) * 100
+  // Visual ranges that fill the bar contiguously: hook → development extends
+  // to CTA start → CTA fills to the end. The actual timestamps shown in the
+  // legend and detail cards remain the original analysis values.
+  const visualRanges: Record<'hook' | 'development' | 'cta', { start: number; end: number }> = {
+    hook: { start: 0, end: analysis.development.start_ts },
+    development: { start: analysis.development.start_ts, end: analysis.cta.start_ts },
+    cta: { start: analysis.cta.start_ts, end: totalDuration },
   }
 
-  function getLeft(startTs: number) {
-    return (startTs / totalDuration) * 100
+  function getWidth(key: 'hook' | 'development' | 'cta') {
+    const r = visualRanges[key]
+    return Math.max(((r.end - r.start) / totalDuration) * 100, 0)
+  }
+
+  function getLeft(key: 'hook' | 'development' | 'cta') {
+    return (visualRanges[key].start / totalDuration) * 100
   }
 
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Estrutura Narrativa</h3>
 
-      {/* Timeline bar */}
-      <div className="relative h-8 w-full overflow-hidden rounded-lg bg-[rgba(59,130,246,0.06)]">
+      {/* Timeline bar — sections render contiguously (no visual gaps) */}
+      <div className="relative h-8 w-full overflow-hidden rounded-lg">
         {sections.map((section) => {
           const data = analysis[section.key]
-          const width = getWidth(data.start_ts, data.end_ts)
-          const left = getLeft(data.start_ts)
+          const width = getWidth(section.key)
+          const left = getLeft(section.key)
 
           return (
             <button

@@ -605,10 +605,11 @@ async function processInBackground(
       log('info', `Analyzing reel ${reelId} (${processed + 1}/${total})`, { jobId })
 
       try {
-        // Timeout per reel: 90 seconds — skip if stuck
+        // Timeout per reel: 180 seconds — pipeline (Whisper + Gemini + LLM)
+        // realistically takes 60-150s for a 30-60s reel
         const result = await Promise.race([
           analyzeOneReel(supabase, reelId, modelProvider, modelId, openaiKey, geminiKey),
-          new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 90_000)),
+          new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 180_000)),
         ])
 
         if (result === 'timeout') {
@@ -634,22 +635,24 @@ async function processInBackground(
       }
 
       processed++
-      await supabase.from('processing_jobs').update({
+      const { data: progressUpdate } = await supabase.from('processing_jobs').update({
         progress: Math.round((processed / total) * 100)
-      }).eq('id', jobId)
+      }).eq('id', jobId).in('status', ['pending', 'processing']).select('status').maybeSingle()
+      // If user cancelled mid-loop, abort further work
+      if (!progressUpdate) break
     }
 
     await supabase.from('processing_jobs').update({
       status: 'completed', progress: 100,
       output_data: { reels_analyzed: processed, model: `${modelProvider}/${modelId}` },
       completed_at: new Date().toISOString(),
-    }).eq('id', jobId)
+    }).eq('id', jobId).in('status', ['pending', 'processing'])
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     log('error', 'Analysis job failed', { jobId, error: errorMessage })
     await supabase.from('processing_jobs').update({
       status: 'failed', error_message: errorMessage, completed_at: new Date().toISOString(),
-    }).eq('id', jobId)
+    }).eq('id', jobId).in('status', ['pending', 'processing'])
   }
 }
 
@@ -684,8 +687,8 @@ serve(async (req: Request) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    const body: AnalyzeRequest = await req.json()
-    const { reel_ids, user_id, model_provider = 'openai', model_id = 'gpt-5.5' } = body
+    const body: AnalyzeRequest & { profile_id?: string } = await req.json()
+    const { reel_ids, user_id, profile_id, model_provider = 'openai', model_id = 'gpt-5' } = body
 
     if (!reel_ids || !Array.isArray(reel_ids) || reel_ids.length === 0) {
       return new Response(JSON.stringify({ error: 'reel_ids must be a non-empty array' }), {
@@ -702,7 +705,7 @@ serve(async (req: Request) => {
       .from('processing_jobs')
       .insert({
         user_id, job_type: 'analyze', status: 'processing', progress: 0,
-        input_data: { reel_ids, model_provider, model_id },
+        input_data: { reel_ids, profile_id, model_provider, model_id },
         started_at: new Date().toISOString(),
       })
       .select('id').single()

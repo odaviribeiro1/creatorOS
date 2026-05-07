@@ -204,13 +204,13 @@ async function downloadThumbnailToStorage(
     const path = `thumbnails/${instagramId}.${ext}`
     const bytes = new Uint8Array(await res.arrayBuffer())
     const { error } = await supabase.storage
-      .from('videos')
+      .from('thumbnails')
       .upload(path, bytes, { contentType, upsert: true })
     if (error) {
       log('warn', `Storage upload failed for ${instagramId}`, { error: error.message })
       return null
     }
-    return supabase.storage.from('videos').getPublicUrl(path).data.publicUrl
+    return supabase.storage.from('thumbnails').getPublicUrl(path).data.publicUrl
   } catch (err) {
     log('warn', `Thumbnail re-host failed for ${instagramId}`, { error: String(err) })
     return null
@@ -222,13 +222,17 @@ async function insertReels(
   profileId: string,
   items: ApifyReelItem[]
 ): Promise<number> {
+  // Process in concurrent batches: each item downloads its thumb and upserts
+  // independently. Limit concurrency to avoid hammering Instagram CDN /
+  // Supabase Storage / DB at once.
+  const BATCH_SIZE = 8
   let insertedCount = 0
 
-  for (const item of items) {
+  async function processItem(item: ApifyReelItem): Promise<boolean> {
     const instagramId = item.id != null ? String(item.id) : null
     if (!instagramId) {
       log('warn', 'Skipping reel with no id', { item: JSON.stringify(item).slice(0, 200) })
-      continue
+      return false
     }
 
     const originalThumb = item.displayUrl ?? null
@@ -261,8 +265,16 @@ async function insertReels(
 
     if (error) {
       log('warn', `Failed to upsert reel ${instagramId}`, { error: error.message })
-    } else {
-      insertedCount++
+      return false
+    }
+    return true
+  }
+
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = items.slice(i, i + BATCH_SIZE)
+    const results = await Promise.allSettled(batch.map(processItem))
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) insertedCount++
     }
   }
 
@@ -276,7 +288,12 @@ async function updateJobProgress(
   extraFields?: Record<string, unknown>
 ) {
   const updateData: Record<string, unknown> = { progress, ...extraFields }
-  const { error } = await supabase.from('processing_jobs').update(updateData).eq('id', jobId)
+  // Skip update if user already cancelled the job
+  const { error } = await supabase
+    .from('processing_jobs')
+    .update(updateData)
+    .eq('id', jobId)
+    .in('status', ['pending', 'processing'])
   if (error) {
     log('warn', `Failed to update job ${jobId} progress`, { error: error.message })
   }
@@ -331,7 +348,7 @@ async function processInBackground(
       await updateJobProgress(supabase, jobId, progress)
     }
 
-    // Mark job as completed
+    // Mark job as completed (no-op if user already cancelled)
     await supabase
       .from('processing_jobs')
       .update({
@@ -341,6 +358,7 @@ async function processInBackground(
         completed_at: new Date().toISOString(),
       })
       .eq('id', jobId)
+      .in('status', ['pending', 'processing'])
 
     log('info', `Job completed successfully`, { jobId, totalReels })
   } catch (error) {
@@ -355,6 +373,7 @@ async function processInBackground(
         completed_at: new Date().toISOString(),
       })
       .eq('id', jobId)
+      .in('status', ['pending', 'processing'])
   }
 }
 

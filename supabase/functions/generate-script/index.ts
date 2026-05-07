@@ -295,7 +295,7 @@ async function processInBackground(
       status: 'completed', progress: 100,
       output_data: { title: scriptRecord.title, model: `${model_provider}/${model_id}` },
       completed_at: new Date().toISOString(),
-    }).eq('id', jobId)
+    }).eq('id', jobId).in('status', ['pending', 'processing'])
 
     log('info', 'Script generated', { jobId })
   } catch (error) {
@@ -303,7 +303,7 @@ async function processInBackground(
     log('error', 'Script generation failed', { jobId, error: errorMessage })
     await supabase.from('processing_jobs').update({
       status: 'failed', error_message: errorMessage, completed_at: new Date().toISOString(),
-    }).eq('id', jobId)
+    }).eq('id', jobId).in('status', ['pending', 'processing'])
   }
 }
 
@@ -338,7 +338,7 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const body: GenerateScriptRequest = await req.json()
-    const { topic, user_id, model_provider = 'openai', model_id = 'gpt-5.5' } = body
+    const { topic, user_id, model_provider = 'openai', model_id = 'gpt-5' } = body
 
     if (!topic || !user_id) {
       return new Response(JSON.stringify({ error: 'topic and user_id are required' }), {

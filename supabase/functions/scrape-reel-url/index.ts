@@ -83,13 +83,13 @@ async function downloadThumbnailToStorage(
     const path = `thumbnails/${instagramId}.${ext}`
     const bytes = new Uint8Array(await res.arrayBuffer())
     const { error } = await supabase.storage
-      .from('videos')
+      .from('thumbnails')
       .upload(path, bytes, { contentType, upsert: true })
     if (error) {
       log('warn', `Storage upload failed for ${instagramId}`, { error: error.message })
       return null
     }
-    return supabase.storage.from('videos').getPublicUrl(path).data.publicUrl
+    return supabase.storage.from('thumbnails').getPublicUrl(path).data.publicUrl
   } catch (err) {
     log('warn', `Thumbnail re-host failed for ${instagramId}`, { error: String(err) })
     return null
@@ -297,7 +297,7 @@ serve(async (req: Request) => {
           progress: 100,
           output_data: { reel_id: reel.id, profile_id: profile.id, username },
           completed_at: new Date().toISOString(),
-        }).eq('id', job.id)
+        }).eq('id', job.id).in('status', ['pending', 'processing'])
 
         log('info', 'Reel URL scrape completed', { reelId: reel.id, username })
       } catch (error) {
@@ -307,7 +307,7 @@ serve(async (req: Request) => {
           status: 'failed',
           error_message: errorMessage,
           completed_at: new Date().toISOString(),
-        }).eq('id', job.id)
+        }).eq('id', job.id).in('status', ['pending', 'processing'])
       }
     })()
 

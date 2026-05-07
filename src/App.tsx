@@ -8,7 +8,6 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import DashboardPage from '@/pages/DashboardPage'
 import ProfilesPage from '@/pages/ProfilesPage'
 import ProfileReelsPage from '@/pages/ProfileReelsPage'
-import AnalysisPage from '@/pages/AnalysisPage'
 import ReelAnalysisPage from '@/pages/ReelAnalysisPage'
 import VoiceProfilePage from '@/pages/VoiceProfilePage'
 import ScriptsPage from '@/pages/ScriptsPage'
@@ -85,14 +84,6 @@ export default function App() {
                 element={
                   <ErrorBoundary>
                     <ProfileReelsPage />
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="analysis"
-                element={
-                  <ErrorBoundary>
-                    <AnalysisPage />
                   </ErrorBoundary>
                 }
               />

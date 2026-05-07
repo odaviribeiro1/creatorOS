@@ -4,7 +4,6 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StructureTimeline } from '@/components/analysis/StructureTimeline'
-import { EditingElementsMap } from '@/components/analysis/EditingElementsMap'
 import { TranscriptViewer } from '@/components/analysis/TranscriptViewer'
 import { VideoPlayer } from '@/components/analysis/VideoPlayer'
 import { PatternCard } from '@/components/analysis/PatternCard'
@@ -59,7 +58,7 @@ export default function ReelAnalysisPage() {
   if (!analysis) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/analysis')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="size-4" />
           Voltar
         </Button>
@@ -76,7 +75,7 @@ export default function ReelAnalysisPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/analysis')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="size-4" />
           Voltar
         </Button>
@@ -126,8 +125,6 @@ export default function ReelAnalysisPage() {
             />
           )}
 
-          {/* Editing elements */}
-          <EditingElementsMap analysis={analysis} onSeek={handleSeek} />
         </div>
       </div>
     </div>

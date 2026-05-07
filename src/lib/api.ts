@@ -30,6 +30,22 @@ export async function scrapeProfile(
   return data as { job_id: string };
 }
 
+export async function cancelJob(jobId: string): Promise<void> {
+  const { error } = await supabase
+    .from('processing_jobs')
+    .update({
+      status: 'cancelled',
+      error_message: 'Cancelado pelo usuário',
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', jobId)
+    .in('status', ['pending', 'processing']);
+
+  if (error) {
+    throw new Error(`Falha ao cancelar: ${error.message}`);
+  }
+}
+
 export async function getJobStatus(jobId: string): Promise<ProcessingJob> {
   const { data, error } = await supabase
     .from('processing_jobs')
@@ -80,11 +96,12 @@ export async function scrapeReelUrl(
 export async function analyzeContent(
   reelIds: string[],
   modelProvider: ModelProvider,
-  modelId: string
+  modelId: string,
+  profileId?: string
 ): Promise<{ job_id: string }> {
   const user_id = await getUserId();
   const { data, error } = await supabase.functions.invoke('analyze-content', {
-    body: { reel_ids: reelIds, user_id, model_provider: modelProvider, model_id: modelId },
+    body: { reel_ids: reelIds, user_id, profile_id: profileId, model_provider: modelProvider, model_id: modelId },
   });
 
   if (error) {

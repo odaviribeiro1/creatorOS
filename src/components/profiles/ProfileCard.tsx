@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Download, Loader2, Mic, Check, X, AlertCircle } from 'lucide-react'
+import { Users, Download, Loader2, Mic, Check, X, AlertCircle, RotateCcw, BarChart3 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store'
-import { scrapeProfile, generateVoiceProfile, getJobStatus } from '@/lib/api'
+import { scrapeProfile, generateVoiceProfile, cancelJob, analyzeContent } from '@/lib/api'
 import { formatNumber, formatDate } from '@/lib/utils'
 import supabase from '@/lib/supabase'
 import type { Profile } from '@/types'
@@ -22,61 +22,145 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
   const navigate = useNavigate()
   const modelProvider = useAppStore((s) => s.modelProvider)
   const modelId = useAppStore((s) => s.modelId)
+  const activeJobs = useAppStore((s) => s.activeJobs)
 
   const [scrapeStatus, setScrapeStatus] = useState<ButtonStatus>('idle')
-  const [scrapeProgress, setScrapeProgress] = useState(0)
   const [voiceStatus, setVoiceStatus] = useState<ButtonStatus>('idle')
-  const [voiceProgress, setVoiceProgress] = useState(0)
+  const [analyzeStatus, setAnalyzeStatus] = useState<ButtonStatus>('idle')
   const [hasVoiceProfile, setHasVoiceProfile] = useState<boolean | null>(null)
   const [scrapeError, setScrapeError] = useState<string | null>(null)
   const [voiceError, setVoiceError] = useState<string | null>(null)
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+  const [reelCounts, setReelCounts] = useState<{ total: number; analyzed: number } | null>(null)
 
-  // Poll job status until done
-  const pollJob = useCallback(
-    (
-      jobId: string,
-      setStatus: (s: ButtonStatus) => void,
-      setProgress: (p: number) => void,
-      setError: (e: string | null) => void,
-      onComplete?: () => void
-    ) => {
-      let cancelled = false
+  // Find jobs in-flight that match this profile
+  const scrapeJob = activeJobs.find((j) => {
+    if (j.job_type !== 'scrape') return false
+    const usernames = (j.input_data as { usernames?: unknown })?.usernames
+    return Array.isArray(usernames) && usernames.includes(profile.instagram_username)
+  })
+  const voiceJob = activeJobs.find((j) => {
+    if (j.job_type !== 'voice_profile') return false
+    return (j.input_data as { profile_id?: string })?.profile_id === profile.id
+  })
+  const analyzeJob = activeJobs.find((j) => {
+    if (j.job_type !== 'analyze') return false
+    return (j.input_data as { profile_id?: string })?.profile_id === profile.id
+  })
 
-      async function poll() {
-        while (!cancelled) {
-          try {
-            const job = await getJobStatus(jobId)
-            setProgress(job.progress)
+  const scrapeProgress = scrapeJob?.progress ?? 0
+  const voiceProgress = voiceJob?.progress ?? 0
+  const analyzeProgress = analyzeJob?.progress ?? 0
 
-            if (job.status === 'completed') {
-              setStatus('success')
-              setProgress(100)
-              onComplete?.()
-              setTimeout(() => {
-                if (!cancelled) setStatus('idle')
-              }, 4000)
-              return
-            }
-            if (job.status === 'failed') {
-              setStatus('error')
-              setError(job.error_message ?? 'Falha no processamento')
-              setTimeout(() => {
-                if (!cancelled) setStatus('idle')
-              }, 8000)
-              return
-            }
-          } catch {
-            // Continue polling
-          }
-          await new Promise((r) => setTimeout(r, 3000))
-        }
-      }
+  const trackedScrapeRef = useRef<string | null>(null)
+  const trackedVoiceRef = useRef<string | null>(null)
+  const trackedAnalyzeRef = useRef<string | null>(null)
 
-      poll()
-      return () => { cancelled = true }
-    },
-    []
-  )
+  // Drive scrape button state from realtime job
+  useEffect(() => {
+    if (!scrapeJob) return
+    if (scrapeJob.status === 'pending' || scrapeJob.status === 'processing') {
+      setScrapeStatus('processing')
+      setScrapeError(null)
+      trackedScrapeRef.current = scrapeJob.id
+      return
+    }
+    if (trackedScrapeRef.current !== scrapeJob.id) return
+    if (scrapeJob.status === 'completed') {
+      setScrapeStatus('success')
+      onScrapeComplete?.()
+      trackedScrapeRef.current = null
+      const t = setTimeout(() => setScrapeStatus('idle'), 4000)
+      return () => clearTimeout(t)
+    }
+    if (scrapeJob.status === 'failed') {
+      setScrapeStatus('error')
+      setScrapeError(scrapeJob.error_message ?? 'Falha no processamento')
+      trackedScrapeRef.current = null
+      const t = setTimeout(() => setScrapeStatus('idle'), 8000)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrapeJob?.id, scrapeJob?.status, scrapeJob?.error_message])
+
+  // Drive voice button state from realtime job
+  useEffect(() => {
+    if (!voiceJob) return
+    if (voiceJob.status === 'pending' || voiceJob.status === 'processing') {
+      setVoiceStatus('processing')
+      setVoiceError(null)
+      trackedVoiceRef.current = voiceJob.id
+      return
+    }
+    if (trackedVoiceRef.current !== voiceJob.id) return
+    if (voiceJob.status === 'completed') {
+      setVoiceStatus('success')
+      setHasVoiceProfile(true)
+      trackedVoiceRef.current = null
+      const t = setTimeout(() => setVoiceStatus('idle'), 4000)
+      return () => clearTimeout(t)
+    }
+    if (voiceJob.status === 'failed') {
+      setVoiceStatus('error')
+      setVoiceError(voiceJob.error_message ?? 'Falha no processamento')
+      trackedVoiceRef.current = null
+      const t = setTimeout(() => setVoiceStatus('idle'), 8000)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceJob?.id, voiceJob?.status, voiceJob?.error_message])
+
+  // Drive analyze button state from realtime job
+  useEffect(() => {
+    if (!analyzeJob) return
+    if (analyzeJob.status === 'pending' || analyzeJob.status === 'processing') {
+      setAnalyzeStatus('processing')
+      setAnalyzeError(null)
+      trackedAnalyzeRef.current = analyzeJob.id
+      return
+    }
+    if (trackedAnalyzeRef.current !== analyzeJob.id) return
+    if (analyzeJob.status === 'completed') {
+      setAnalyzeStatus('success')
+      trackedAnalyzeRef.current = null
+      // Refresh counts so "X/Y analisados" updates
+      loadReelCounts()
+      const t = setTimeout(() => setAnalyzeStatus('idle'), 4000)
+      return () => clearTimeout(t)
+    }
+    if (analyzeJob.status === 'failed') {
+      setAnalyzeStatus('error')
+      setAnalyzeError(analyzeJob.error_message ?? 'Falha na análise')
+      trackedAnalyzeRef.current = null
+      const t = setTimeout(() => setAnalyzeStatus('idle'), 8000)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analyzeJob?.id, analyzeJob?.status, analyzeJob?.error_message])
+
+  // Load count of reels and analyzed reels for this profile
+  async function loadReelCounts() {
+    const { data: reels } = await supabase
+      .from('reels')
+      .select('id')
+      .eq('profile_id', profile.id)
+    const reelIds = (reels ?? []).map((r: { id: string }) => r.id)
+    if (reelIds.length === 0) {
+      setReelCounts({ total: 0, analyzed: 0 })
+      return
+    }
+    const { data: analyses } = await supabase
+      .from('content_analyses')
+      .select('reel_id')
+      .in('reel_id', reelIds)
+    setReelCounts({ total: reelIds.length, analyzed: (analyses ?? []).length })
+  }
+
+  useEffect(() => {
+    if (!profile.last_scraped_at) return
+    loadReelCounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id, profile.last_scraped_at])
 
   // Check if voice profile exists (own profiles only)
   useEffect(() => {
@@ -95,11 +179,9 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
     e.stopPropagation()
     setScrapeError(null)
     setScrapeStatus('starting')
-    setScrapeProgress(0)
     try {
-      const { job_id } = await scrapeProfile([profile.instagram_username], profile.profile_type)
-      setScrapeStatus('processing')
-      pollJob(job_id, setScrapeStatus, setScrapeProgress, setScrapeError, onScrapeComplete)
+      await scrapeProfile([profile.instagram_username], profile.profile_type)
+      // Realtime takes over via the useEffect above.
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setScrapeError(msg)
@@ -108,11 +190,60 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
     }
   }
 
+  async function handleCancel(e: React.MouseEvent, jobId: string) {
+    e.stopPropagation()
+    try {
+      await cancelJob(jobId)
+    } catch (err) {
+      console.error('Cancel failed:', err)
+    }
+  }
+
+  async function handleAnalyze(e: React.MouseEvent) {
+    e.stopPropagation()
+    setAnalyzeError(null)
+    setAnalyzeStatus('starting')
+    try {
+      // Get top 10 unanalyzed reels of this profile
+      const { data: reels } = await supabase
+        .from('reels')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .order('engagement_score', { ascending: false })
+        .limit(10)
+      const reelIds = (reels ?? []).map((r: { id: string }) => r.id)
+      if (reelIds.length === 0) {
+        setAnalyzeError('Nenhum reel disponível para analisar')
+        setAnalyzeStatus('error')
+        setTimeout(() => setAnalyzeStatus('idle'), 5000)
+        return
+      }
+      const { data: existing } = await supabase
+        .from('content_analyses')
+        .select('reel_id')
+        .in('reel_id', reelIds)
+      const analyzed = new Set(((existing ?? []) as { reel_id: string }[]).map((a) => a.reel_id))
+      const todo = reelIds.filter((id) => !analyzed.has(id))
+      if (todo.length === 0) {
+        setAnalyzeError('Todos os top 10 reels já foram analisados')
+        setAnalyzeStatus('error')
+        setTimeout(() => setAnalyzeStatus('idle'), 5000)
+        return
+      }
+      await analyzeContent(todo, modelProvider, modelId, profile.id)
+      // Realtime takes over.
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setAnalyzeError(msg)
+      setAnalyzeStatus('error')
+      setTimeout(() => setAnalyzeStatus('idle'), 8000)
+    }
+  }
+
   async function handleAnalyzeVoice(e: React.MouseEvent) {
     e.stopPropagation()
     setVoiceError(null)
     setVoiceStatus('starting')
-    setVoiceProgress(0)
     try {
       const { data: reels } = await supabase
         .from('reels')
@@ -129,11 +260,8 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
         return
       }
 
-      const { job_id } = await generateVoiceProfile(profile.id, reelIds, modelProvider, modelId)
-      setVoiceStatus('processing')
-      pollJob(job_id, setVoiceStatus, setVoiceProgress, setVoiceError, () => {
-        setHasVoiceProfile(true)
-      })
+      await generateVoiceProfile(profile.id, reelIds, modelProvider, modelId)
+      // Realtime takes over.
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setVoiceError(msg)
@@ -215,10 +343,17 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
             disabled={scrapeStatus === 'starting' || scrapeStatus === 'processing'}
           >
             {scrapeStatus === 'idle' && (
-              <>
-                <Download className="size-3" />
-                Processar
-              </>
+              profile.last_scraped_at ? (
+                <>
+                  <RotateCcw className="size-3" />
+                  Atualizar reels
+                </>
+              ) : (
+                <>
+                  <Download className="size-3" />
+                  Processar
+                </>
+              )
             )}
             {scrapeStatus === 'starting' && (
               <>
@@ -259,13 +394,98 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
             </div>
           )}
 
+          {scrapeJob && scrapeStatus === 'processing' && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={(e) => handleCancel(e, scrapeJob.id)}
+                className="text-[10px] text-muted-foreground transition-colors hover:text-destructive"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
           {scrapeError && scrapeStatus === 'error' && (
             <div className="flex items-start gap-1.5 rounded bg-destructive/5 px-2 py-1">
               <AlertCircle className="mt-0.5 size-3 shrink-0 text-destructive" />
               <p className="text-[10px] leading-tight text-destructive line-clamp-2">{scrapeError}</p>
             </div>
           )}
+
         </div>
+
+        {/* Analyze section (only after scrape) */}
+        {profile.last_scraped_at && (
+          <div className="space-y-1.5">
+            <Button
+              variant="outline"
+              size="xs"
+              className={cn(
+                'w-full transition-all duration-300',
+                analyzeStatus === 'idle' && 'border-accent/30 text-accent hover:bg-accent/10',
+                analyzeStatus === 'processing' && 'border-primary/50 bg-primary/5 text-primary',
+                analyzeStatus === 'success' && 'border-accent/50 bg-accent/10 text-accent',
+                analyzeStatus === 'error' && 'border-destructive/50 bg-destructive/10 text-destructive',
+              )}
+              onClick={handleAnalyze}
+              disabled={analyzeStatus === 'starting' || analyzeStatus === 'processing'}
+            >
+              {analyzeStatus === 'idle' && (
+                <>
+                  <BarChart3 className="size-3" />
+                  Analisar top 10 reels
+                  {reelCounts && reelCounts.analyzed > 0 ? ` (${Math.min(reelCounts.analyzed, 10)}/10 já feito)` : ''}
+                </>
+              )}
+              {analyzeStatus === 'starting' && (<><Loader2 className="size-3 animate-spin" />Iniciando...</>)}
+              {analyzeStatus === 'processing' && (<><Loader2 className="size-3 animate-spin" />Analisando{analyzeProgress > 0 ? ` ${analyzeProgress}%` : '...'}</>)}
+              {analyzeStatus === 'success' && (<><Check className="size-3" />Concluído!</>)}
+              {analyzeStatus === 'error' && (<><X className="size-3" />Falhou — tentar novamente</>)}
+            </Button>
+
+            {(analyzeStatus === 'processing' || analyzeStatus === 'starting') && (
+              <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all duration-500 ease-out',
+                    analyzeStatus === 'starting' ? 'bg-primary/50 animate-pulse w-full' : 'bg-primary'
+                  )}
+                  style={analyzeStatus === 'processing' ? { width: `${Math.max(analyzeProgress, 5)}%` } : undefined}
+                />
+              </div>
+            )}
+
+            {analyzeJob && analyzeStatus === 'processing' && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={(e) => handleCancel(e, analyzeJob.id)}
+                  className="text-[10px] text-muted-foreground transition-colors hover:text-destructive"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+
+            {analyzeError && analyzeStatus === 'error' && (
+              <div className="flex items-start gap-1.5 rounded bg-destructive/5 px-2 py-1">
+                <AlertCircle className="mt-0.5 size-3 shrink-0 text-destructive" />
+                <p className="text-[10px] leading-tight text-destructive line-clamp-2">{analyzeError}</p>
+              </div>
+            )}
+
+            {reelCounts && reelCounts.analyzed > 0 && analyzeStatus === 'idle' && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); navigate(`/profiles/${profile.id}/reels`) }}
+                className="block w-full text-center text-[10px] text-muted-foreground hover:text-primary"
+              >
+                Ver reels analisados →
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Voice profile button (own profiles only) */}
         {profile.profile_type === 'own' && (
@@ -334,6 +554,18 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
                   )}
                   style={voiceStatus === 'processing' ? { width: `${Math.max(voiceProgress, 5)}%` } : undefined}
                 />
+              </div>
+            )}
+
+            {voiceJob && voiceStatus === 'processing' && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={(e) => handleCancel(e, voiceJob.id)}
+                  className="text-[10px] text-muted-foreground transition-colors hover:text-destructive"
+                >
+                  Cancelar
+                </button>
               </div>
             )}
 
