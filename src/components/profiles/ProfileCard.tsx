@@ -434,7 +434,8 @@ export function ProfileCard({ profile, onScrapeComplete }: ProfileCardProps) {
               {analyzeStatus === 'idle' && (
                 <>
                   <BarChart3 className="size-3" />
-                  Analisar reels{reelCounts ? ` (${reelCounts.analyzed}/${reelCounts.total})` : ''}
+                  Analisar top 10 reels
+                  {reelCounts && reelCounts.analyzed > 0 ? ` (${Math.min(reelCounts.analyzed, 10)}/10 já feito)` : ''}
                 </>
               )}
               {analyzeStatus === 'starting' && (<><Loader2 className="size-3 animate-spin" />Iniciando...</>)}
