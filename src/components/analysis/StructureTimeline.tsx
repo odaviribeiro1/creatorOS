@@ -62,8 +62,12 @@ export function StructureTimeline({ analysis, onSeek }: StructureTimelineProps) 
     <div className="space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Estrutura Narrativa</h3>
 
-      {/* Timeline bar */}
-      <div className="relative h-8 w-full overflow-hidden rounded-lg bg-[rgba(59,130,246,0.06)]">
+      {/* Timeline bar — gaps render as a subtle muted background, not as pixel
+          glitches, since real analyses can have unlabeled time between sections */}
+      <div
+        className="relative h-8 w-full overflow-hidden rounded-lg bg-white/[0.04] ring-1 ring-inset ring-white/5"
+        title="Áreas escuras = trechos sem seção classificada"
+      >
         {sections.map((section) => {
           const data = analysis[section.key]
           const width = getWidth(data.start_ts, data.end_ts)

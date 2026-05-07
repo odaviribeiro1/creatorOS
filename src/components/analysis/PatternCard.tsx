@@ -29,13 +29,16 @@ export function PatternCard({ patterns }: PatternCardProps) {
           <h3 className="text-sm font-semibold text-foreground">Padrões Virais</h3>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           {entries.map(([key, value]) => (
-            <div key={key} className="space-y-0.5">
-              <p className="text-[10px] text-muted-foreground">
+            <div key={key} className="min-w-0 space-y-1">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                 {patternLabels[key] ?? key}
               </p>
-              <Badge variant="secondary" className="text-xs">
+              <Badge
+                variant="secondary"
+                className="block w-full whitespace-normal break-words text-left text-xs leading-snug"
+              >
                 {String(value)}
               </Badge>
             </div>
