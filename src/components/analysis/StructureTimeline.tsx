@@ -50,28 +50,34 @@ export function StructureTimeline({ analysis, onSeek }: StructureTimelineProps) 
     1
   )
 
-  function getWidth(startTs: number, endTs: number) {
-    return ((endTs - startTs) / totalDuration) * 100
+  // Visual ranges that fill the bar contiguously: hook → development extends
+  // to CTA start → CTA fills to the end. The actual timestamps shown in the
+  // legend and detail cards remain the original analysis values.
+  const visualRanges: Record<'hook' | 'development' | 'cta', { start: number; end: number }> = {
+    hook: { start: 0, end: analysis.development.start_ts },
+    development: { start: analysis.development.start_ts, end: analysis.cta.start_ts },
+    cta: { start: analysis.cta.start_ts, end: totalDuration },
   }
 
-  function getLeft(startTs: number) {
-    return (startTs / totalDuration) * 100
+  function getWidth(key: 'hook' | 'development' | 'cta') {
+    const r = visualRanges[key]
+    return Math.max(((r.end - r.start) / totalDuration) * 100, 0)
+  }
+
+  function getLeft(key: 'hook' | 'development' | 'cta') {
+    return (visualRanges[key].start / totalDuration) * 100
   }
 
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Estrutura Narrativa</h3>
 
-      {/* Timeline bar — gaps render as a subtle muted background, not as pixel
-          glitches, since real analyses can have unlabeled time between sections */}
-      <div
-        className="relative h-8 w-full overflow-hidden rounded-lg bg-white/[0.04] ring-1 ring-inset ring-white/5"
-        title="Áreas escuras = trechos sem seção classificada"
-      >
+      {/* Timeline bar — sections render contiguously (no visual gaps) */}
+      <div className="relative h-8 w-full overflow-hidden rounded-lg">
         {sections.map((section) => {
           const data = analysis[section.key]
-          const width = getWidth(data.start_ts, data.end_ts)
-          const left = getLeft(data.start_ts)
+          const width = getWidth(section.key)
+          const left = getLeft(section.key)
 
           return (
             <button
