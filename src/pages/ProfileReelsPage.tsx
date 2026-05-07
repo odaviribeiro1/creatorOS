@@ -34,9 +34,13 @@ export default function ProfileReelsPage() {
     }
     const { data } = await supabase
       .from('content_analyses')
-      .select('reel_id')
+      .select('reel_id, hook')
       .in('reel_id', reels.map((r) => r.id))
-    setAnalyzedIds(new Set(((data ?? []) as { reel_id: string }[]).map((a) => a.reel_id)))
+    // Treat timeout/error placeholders as "not analyzed" so the card shows
+    // "Analisar este reel" again, letting the user retry.
+    const validAnalyses = ((data ?? []) as { reel_id: string; hook: { type?: string } }[])
+      .filter((a) => a.hook?.type !== 'timeout' && a.hook?.type !== 'error')
+    setAnalyzedIds(new Set(validAnalyses.map((a) => a.reel_id)))
   }, [reels])
 
   useEffect(() => {

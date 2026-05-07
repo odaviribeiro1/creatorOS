@@ -1,3 +1,4 @@
+import { AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDuration } from '@/lib/utils'
 import type { ContentAnalysis } from '@/types'
@@ -14,6 +15,34 @@ const sections = [
 ]
 
 export function StructureTimeline({ analysis, onSeek }: StructureTimelineProps) {
+  const hookType = (analysis.hook as { type?: string }).type
+  const isFailed =
+    hookType === 'timeout' ||
+    hookType === 'error' ||
+    (analysis.hook.end_ts === 0 && analysis.development.end_ts === 0 && analysis.cta.end_ts === 0)
+
+  if (isFailed) {
+    return (
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Estrutura Narrativa</h3>
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-destructive">
+              {hookType === 'timeout'
+                ? 'Análise expirou (timeout)'
+                : 'Análise falhou'}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              O pipeline (Whisper + Gemini + LLM) não conseguiu concluir essa análise.
+              Volte para o perfil deste reel e clique em <span className="text-foreground">"Analisar este reel"</span> de novo.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const totalDuration = Math.max(
     analysis.hook.end_ts,
     analysis.development.end_ts,

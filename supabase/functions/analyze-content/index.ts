@@ -605,10 +605,11 @@ async function processInBackground(
       log('info', `Analyzing reel ${reelId} (${processed + 1}/${total})`, { jobId })
 
       try {
-        // Timeout per reel: 90 seconds — skip if stuck
+        // Timeout per reel: 180 seconds — pipeline (Whisper + Gemini + LLM)
+        // realistically takes 60-150s for a 30-60s reel
         const result = await Promise.race([
           analyzeOneReel(supabase, reelId, modelProvider, modelId, openaiKey, geminiKey),
-          new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 90_000)),
+          new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 180_000)),
         ])
 
         if (result === 'timeout') {
